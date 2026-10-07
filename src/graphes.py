@@ -54,8 +54,9 @@ def couleur(methode: str) -> str:
 def sauver(fig, nom: str):
     os.makedirs(FIG_DIR, exist_ok=True)
     fig.tight_layout()
-    for ext in ('png', 'pdf'):
-        fig.savefig(os.path.join(FIG_DIR, f'{nom}.{ext}'), dpi=200)
+    # Sans date de création dans le PDF : une figure inchangée ne crée pas de diff git
+    fig.savefig(os.path.join(FIG_DIR, f'{nom}.png'), dpi=200)
+    fig.savefig(os.path.join(FIG_DIR, f'{nom}.pdf'), metadata={'CreationDate': None})
     plt.close(fig)
     print(f'  {nom}')
 
