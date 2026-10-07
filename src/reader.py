@@ -8,6 +8,17 @@ def read_instance(path: str) -> dict:
         return json.load(f)
 
 
+def read_solution(path: str) -> dict:
+    """Lit une solution `nom_intervention date_début` par ligne et retourne {nom: date}."""
+    starts = {}
+    with open(path, 'r') as f:
+        for line in f:
+            if line.strip():
+                name, start = line.split()
+                starts[name] = int(start)
+    return starts
+
+
 def start_candidates(intervention: dict, horizon: int) -> range:
     """Dates de début possibles d'une intervention : 1 .. min(tmax, T)."""
     return range(1, min(int(intervention['tmax']), horizon) + 1)

@@ -3,6 +3,7 @@
 #   make heuristique     INSTANCE=A_set/A_01.json
 #   make metaheuristique INSTANCE=A_set/A_01.json
 #   make plne            INSTANCE=A_set/A_01.json   (Gurobi requis)
+#   make graphes [INSTANCE=... SOLUTION=...]
 #   make check INSTANCE=A_set/A_01.json [SOLUTION=solutions/A_01.txt]
 #   make clean
 
@@ -14,13 +15,14 @@ OUT      ?= solutions
 NAME      = $(basename $(notdir $(INSTANCE)))
 SOLUTION ?= $(OUT)/$(NAME).txt
 
-.PHONY: help install heuristique metaheuristique plne check clean
+.PHONY: help install heuristique metaheuristique plne graphes check clean
 
 help:
 	@echo "make install                              crée $(VENV) et y installe requirements.txt"
 	@echo "make heuristique     INSTANCE=...         glouton    -> $(OUT)/<instance>_heuristique.txt + checker"
 	@echo "make metaheuristique INSTANCE=...         recuit     -> $(OUT)/<instance>_metaheuristique.txt + checker"
 	@echo "make plne            INSTANCE=...         PLNE Gurobi -> $(OUT)/<instance>_plne.txt + checker"
+	@echo "make graphes [INSTANCE=... SOLUTION=...] graphes du rapport -> results/figures/"
 	@echo "make check INSTANCE=... [SOLUTION=...]    vérifie une solution avec le checker officiel"
 	@echo "make clean                                supprime les caches Python"
 
@@ -43,6 +45,10 @@ plne:
 	@mkdir -p $(OUT)
 	$(PYTHON) src/Plne.py $(INSTANCE) $(OUT)/$(NAME)_plne.txt
 	$(PYTHON) RTE_ChallengeROADEF2020_checker.py $(INSTANCE) $(OUT)/$(NAME)_plne.txt
+
+# Graphes 1 à 8 depuis results/ ; 9 à 11 en plus si SOLUTION existe
+graphes:
+	$(PYTHON) src/graphes.py $(if $(wildcard $(SOLUTION)),$(INSTANCE) $(SOLUTION))
 
 check:
 	$(PYTHON) RTE_ChallengeROADEF2020_checker.py $(INSTANCE) $(SOLUTION)
