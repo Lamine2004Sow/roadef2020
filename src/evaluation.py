@@ -156,6 +156,10 @@ class Evaluation:
 
     # ----------------------------------------------------------------- lecture
 
+    def span(self, i: str) -> tuple:
+        """(première période, fin exclue) de i à sa date courante, en indices 0."""
+        return self._data(i, self.start[i])[:2]
+
     def interventions_en_violation(self, tol: float = 1e-5) -> list:
         """Interventions en cours sur une période où une ressource est violée,
         ou impliquées dans une exclusion violée."""

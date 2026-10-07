@@ -23,8 +23,7 @@ Fichier : `src/meta_heuristique.py`
 | `write_solution(path, starts)` | `writer.py` | écriture de la meilleure solution |
 | `Evaluation(instance, lam)` | `evaluation.py` | état + coût incrémental (voir ci-dessous) |
 
-Le glouton (`heuristique.py`) n'est pas encore codé.
-`meta_heuristique.py` est vide. Le checker officiel sert à valider la solution finale.
+Le checker officiel sert à valider la solution finale.
 
 ## Pourquoi pas un vrai 2-opt
 
@@ -69,6 +68,36 @@ après 500 mouvements. Environ 2000 à 3000 essais par seconde en Python.
 ## À faire
 
 - [x] Évaluation incrémentale du Δ.
-- [ ] Mouvements déplacement et swap.
-- [ ] Boucle du recuit + calibrage de `T0`.
-- [ ] Descente finale.
+- [x] Mouvements déplacement et swap.
+- [x] Boucle du recuit + calibrage de `T0`.
+- [x] Descente finale.
+- [ ] Régler les paramètres sur les instances de réglage.
+- [ ] Lancer avec le temps limite du challenge et plusieurs graines.
+
+## Implémentation (`src/meta_heuristique.py`)
+
+`make metaheuristique INSTANCE=... [TEMPS=60] [GRAINE=0]` (temps par défaut : `ComputationTime` de l'instance, en minutes).
+
+| Fonction | Rôle |
+|---|---|
+| `Recuit.voisin` | swap (30 %) ou déplacement local ±5 (80 % des déplacements) / global |
+| `Recuit.calibrer_t0` | `T0 = −Δ̄ / ln 0,5`, Δ̄ sur les mouvements **sans changement de violation** |
+| `Recuit.run` | paliers de `|I|` itérations, `α` déduit du temps limite (`T_final = 10⁻³ T0`), `λ ×1,01` tant qu'infaisable |
+| `descente` | meilleurs déplacements puis swaps entre interventions qui se chevauchent ; refuse toute hausse des violations |
+| `cle` | ordre des solutions : violations d'abord, puis objectif (indépendant de λ) |
+
+Répartition du temps : glouton (réparation bornée à 20 % du temps), recuit jusqu'à 90 %, descente le reste.
+Enregistre `recuit` et `recuit+descente` dans `results.csv` et la convergence dans `results/convergence/`.
+
+**Piège rencontré** : calibrer `T0` sur tous les Δ positifs donnait une température dominée par la
+pénalité (λ ≈ 10⁵) : le recuit marchait au hasard et n'améliorait jamais le glouton.
+
+## Premiers résultats (60 s, graine 0)
+
+| Instance | Glouton | Recuit | + Descente |
+|---|---|---|---|
+| A_01 | 1807.83 | 1771.10 | **1770.65** (−2,1 %) |
+| A_05 | 639.87 | 637.81 | **637.67** (−0,3 %) |
+| B_01 | 4200.76 (viol. 0,14) | 4099.39 (réalisable) | **4099.39** |
+
+Le recuit termine la réparation de B_01, que le glouton ne réussissait pas.

@@ -1,7 +1,7 @@
 # Usage :
 #   make install
 #   make heuristique     INSTANCE=A_set/A_01.json
-#   make metaheuristique INSTANCE=A_set/A_01.json
+#   make metaheuristique INSTANCE=A_set/A_01.json [TEMPS=60] [GRAINE=0]
 #   make plne            INSTANCE=A_set/A_01.json   (Gurobi requis)
 #   make graphes [INSTANCE=... SOLUTION=...]
 #   make check INSTANCE=A_set/A_01.json [SOLUTION=solutions/A_01.txt]
@@ -12,6 +12,9 @@ VENV     ?= .venv
 PYTHON   ?= $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,python3)
 INSTANCE ?= A_set/A_01.json
 OUT      ?= solutions
+GRAINE   ?= 0
+# TEMPS (s) vide : ComputationTime de l'instance
+TEMPS    ?=
 NAME      = $(basename $(notdir $(INSTANCE)))
 SOLUTION ?= $(OUT)/$(NAME).txt
 
@@ -20,7 +23,7 @@ SOLUTION ?= $(OUT)/$(NAME).txt
 help:
 	@echo "make install                              crée $(VENV) et y installe requirements.txt"
 	@echo "make heuristique     INSTANCE=...         glouton    -> $(OUT)/<instance>_heuristique.txt + checker"
-	@echo "make metaheuristique INSTANCE=...         recuit     -> $(OUT)/<instance>_metaheuristique.txt + checker"
+	@echo "make metaheuristique INSTANCE=... [TEMPS=s] [GRAINE=g]  recuit -> $(OUT)/<instance>_metaheuristique.txt + checker"
 	@echo "make plne            INSTANCE=...         PLNE Gurobi -> $(OUT)/<instance>_plne.txt + checker"
 	@echo "make graphes [INSTANCE=... SOLUTION=...] graphes du rapport -> results/figures/"
 	@echo "make check INSTANCE=... [SOLUTION=...]    vérifie une solution avec le checker officiel"
@@ -38,7 +41,7 @@ heuristique:
 
 metaheuristique:
 	@mkdir -p $(OUT)
-	$(PYTHON) src/meta_heuristique.py $(INSTANCE) $(OUT)/$(NAME)_metaheuristique.txt
+	$(PYTHON) src/meta_heuristique.py $(INSTANCE) $(OUT)/$(NAME)_metaheuristique.txt $(if $(TEMPS),--temps $(TEMPS)) --graine $(GRAINE)
 	$(PYTHON) RTE_ChallengeROADEF2020_checker.py $(INSTANCE) $(OUT)/$(NAME)_metaheuristique.txt
 
 plne:

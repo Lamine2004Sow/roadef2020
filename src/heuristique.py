@@ -75,8 +75,11 @@ def _reparer_swaps(ev: Evaluation, tol: float) -> bool:
 
 
 def glouton(instance: dict, k: int = 1, lam: float = None, seed: int = None,
-            a: float = 1.0, b: float = 1.0, c: float = 0.5) -> Evaluation:
-    """Algorithme 2 : construction gloutonne, retourne l'Evaluation de la solution complète."""
+            a: float = 1.0, b: float = 1.0, c: float = 0.5,
+            temps_reparation: float = None) -> Evaluation:
+    """Algorithme 2 : construction gloutonne, retourne l'Evaluation de la solution complète.
+
+    `temps_reparation` (s) borne la réparation (aucune limite par défaut)."""
     indicators = compute_indicators(instance)
     scores = difficulty_scores(indicators, a, b, c)
     ordre = sorted(scores, key=scores.get, reverse=True)
@@ -85,7 +88,7 @@ def glouton(instance: dict, k: int = 1, lam: float = None, seed: int = None,
     for i in ordre:
         ev.assign({i: meilleure_date(ev, i, k, rng)})
     if ev.violation() > 0:
-        reparer(ev)
+        reparer(ev, time_limit=temps_reparation)
     return ev
 
 

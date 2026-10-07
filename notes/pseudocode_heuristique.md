@@ -20,6 +20,8 @@ Correspondance avec le code : `src/heuristique.py` (à écrire), `src/evaluation
 \algrenewcommand\algorithmicthen{\textbf{alors}}
 \algrenewcommand\algorithmicelse{\textbf{sinon}}
 \algrenewcommand\algorithmicreturn{\textbf{retourner}}
+\algrenewcommand\algorithmicrepeat{\textbf{répéter}}
+\algrenewcommand\algorithmicuntil{\textbf{jusqu'à}}
 ```
 
 ## Notations
