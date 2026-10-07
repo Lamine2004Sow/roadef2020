@@ -71,5 +71,32 @@ Poids par défaut : `a=1, b=1, c=0.5` (la faisabilité passe avant le regret).
 
 ## À faire
 
-- [ ] Coder le glouton dans `src/heuristique.py` à partir de `sort_interventions`.
+- [x] Coder le glouton dans `src/heuristique.py` (`meilleure_date`, `glouton`, `lambda_defaut`, `main`).
+- [ ] `reparer` : violations restantes sur A_04, A_14, A_15, B_01, B_15.
+- [ ] `grasp` : relances randomisées.
 - [ ] Régler les poids `a`, `b`, `c` par type d'instance.
+
+## Premiers résultats (glouton seul, k = 1, λ = 10 × risque moyen)
+
+| Instance | Objectif | Violations | Temps |
+|---|---|---|---|
+| A_01 | 1807.83 | 0 | 2.4 s |
+| A_02 | 4685.07 | 0 | 1.5 s |
+| A_03 | 850.80 | 0 | 1.2 s |
+| A_04 | 2125.21 | **101.6** | 50.5 s |
+| A_05 | 639.87 | 0 | 6.6 s |
+| A_06 | 641.15 | 0 | 5.3 s |
+| A_07 | 2272.78 | 0 | 0.1 s |
+| A_08 | 745.83 | 0 | 0.1 s |
+| A_09 | 1586.19 | 0 | 0.1 s |
+| A_10 | 2997.25 | 0 | 0.6 s |
+| A_11 | 501.62 | 0 | 0.4 s |
+| A_12 | 792.00 | 0 | 0.3 s |
+| A_13 | 2012.72 | 0 | 2.5 s |
+| A_14 | 2508.09 | **0.84** | 0.7 s |
+| A_15 | 2509.62 | **1.22** | 0.8 s |
+| B_01 | 4109.34 | **4.40** | 1.6 s |
+| B_15 | 22597.78 | **124.9** | 121.4 s |
+
+Objectifs identiques au checker. 12 instances A sur 15 réalisables ;
+les violations restantes sont des dépassements de bornes de ressources.
