@@ -10,6 +10,28 @@ results/
 solutions/              meilleures solutions (.txt, vérifiables avec le checker)
 ```
 
+## Code
+
+**`src/logger.py`**
+
+| Fonction | Rôle |
+|---|---|
+| `log_instance(instance, instance_path)` | ajoute l'instance à `instances.csv` (une seule fois) |
+| `log_result(ev, instance_path, methode, temps, variante, graine, **params)` | ajoute une exécution à `results.csv` ; obj1, obj2, réalisabilité et violations calculés depuis l'`Evaluation` |
+| `Convergence(instance_path, methode, graine)` | fichier `convergence/<instance>_<methode>_s<graine>.csv`, une ligne par appel à `.log(...)` |
+| `objectifs(ev)` | (obj1 risque moyen, obj2 excès) |
+| `read_csv(path)` | relit un CSV (nombres convertis) |
+
+Le glouton enregistre déjà chaque exécution (`methode='glouton'`, `variante='a=.. b=.. c=..'`).
+
+**`src/graphes.py`** : `make graphes [INSTANCE=... SOLUTION=...]` → `results/figures/` (PNG + PDF).
+Graphes 1 à 8 depuis `results/` (ignorés tant que les données manquent), 9 à 11 si une solution est donnée.
+
+- Référence de l'écart (%) : `results/best_known.csv` (colonnes `instance,objectif`) s'il existe,
+  sinon la meilleure solution réalisable trouvée. La série de référence est marquée « réf. ».
+- Noms de méthodes reconnus (couleur fixe) : `glouton`, `recuit`, `plne`, `grasp`, `recuit+descente`, `tabou`.
+- Seules les exécutions réalisables comptent dans les graphes 1, 2, 3, 7 et 8.
+
 ## Données à conserver
 
 ### 1. Caractéristiques des instances (`instances.csv`)
@@ -73,10 +95,59 @@ La meilleure solution `.txt` de chaque instance dans `solutions/`.
 
 Les graphes 9 à 11 se calculent depuis une solution et `Evaluation` (tableaux `risk` et `usage`).
 
-**Essentiel pour le rapport : 1, 2, 4, 7 et 9.**
+### Comparer les méthodes selon la taille
+12a. **Temps selon la taille** (log-log), glouton et PLNE : leur temps est un résultat.
+    Montre que la PLNE explose quand le glouton reste raisonnable. *Données : `results.csv` + `instances.csv`.*
+12b. **Écart (%) selon la taille**, toutes méthodes, à temps limite égal : pour le recuit / tabou
+    le temps est un paramètre (arrêt sur chrono), on compare donc la qualité. *Mêmes données.*
+13. **Profil de performance (Dolan-Moré)** : pour chaque méthode, part des instances où elle est
+    à moins de x % de la meilleure. Résume la comparaison finale en une figure. *Données : `results.csv`.*
+
+Taille d'une instance (colonne `taille` de `instances.csv`, à ajouter) :
+`Σᵢ Σₛ Δᵢ(s) × nombre moyen de scénarios`, à peu près le nombre de valeurs lues par `delta` ;
+le nombre d'interventions seul n'explique pas le temps (A_04 : 50 s).
+
+**Essentiel pour le rapport : 1, 2, 4, 7, 9 et 13.**
+
+## Protocole de comparaison
+
+### Étape 1 : choix de la métaheuristique (recuit ou tabou)
+- Sur un **sous-ensemble d'instances** (4 ou 5, A et B, tailles variées), distinct de celui
+  de la comparaison finale : régler et choisir sur les instances de test biaise le résultat.
+- **À temps égal**, 5 à 10 graines chacune.
+- Critères : écart moyen à la référence, stabilité (écart-type entre graines), taux de réalisabilité.
+- Rapport : courte section avec les graphes 2 et 4 pour les deux métaheuristiques.
+
+### Étape 2 : comparaison glouton / métaheuristique retenue / PLNE
+- **Même budget de temps** (`ComputationTime` du challenge) pour la métaheuristique et la PLNE ;
+  le glouton tourne une fois, on note son temps.
+- **Même machine, même évaluation** (checker officiel).
+- Métaheuristique : 10 graines, moyenne ± écart-type et meilleure valeur.
+- PLNE : solution, borne inférieure et gap ; un optimum prouvé sert de référence exacte.
+
+| Indicateur | Ce qu'il montre |
+|---|---|
+| écart à la meilleure solution connue (%) | qualité |
+| taux de solutions réalisables | fiabilité |
+| temps (glouton, PLNE) / temps pour atteindre la qualité du glouton (méta) | vitesse |
+| gap de la PLNE | distance prouvée à l'optimum |
+
+**Présentation**
+- Tableau principal, une ligne par instance :
+  glouton (obj, temps) | méta (moyenne ± écart-type, meilleure) | PLNE (obj, gap, temps).
+- Graphes 1, 12a, 12b et 13.
+- Optionnel : test de Wilcoxon apparié méta vs glouton sur toutes les instances.
+
+**Conclusion attendue** : rôles complémentaires plutôt qu'un gagnant — glouton rapide (point de
+départ), métaheuristique meilleur compromis, PLNE référence exacte sur les petites instances.
 
 ## À faire
 
-- [ ] `src/logger.py` : écriture de `results.csv` et des fichiers de convergence.
-- [ ] `src/graphes.py` : génération des graphes (matplotlib) depuis `results/`.
+- [x] `src/logger.py` : écriture de `results.csv` et des fichiers de convergence.
+- [x] `src/graphes.py` : génération des graphes (matplotlib) depuis `results/`.
+- [ ] Brancher `Convergence` et `log_result` dans le recuit (méthode `recuit`, graines).
 - [ ] Récupérer les meilleures solutions connues du challenge (pour l'écart en %).
+- [ ] Colonne `taille` dans `instances.csv` (+ recalcul des instances déjà enregistrées).
+- [ ] Graphes 12a, 12b (taille) et 13 (profil de performance).
+- [ ] Colonnes PLNE dans `results.csv` : borne inférieure et gap.
+- [ ] Choisir le sous-ensemble d'instances de réglage (étape 1).
