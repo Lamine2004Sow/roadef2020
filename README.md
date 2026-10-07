@@ -11,7 +11,7 @@ tout en minimisant un risque combinant moyenne et excès au quantile τ sur plus
    le moins le coût.
 2. **Métaheuristique** : recuit simulé partant de la solution gloutonne, avec deux mouvements
    (déplacement d'une intervention, swap des dates de deux interventions), suivi d'une descente locale.
-3. **PLNE** : modèle exact avec Gurobi.
+3. **PLNE** : modèle exact avec Gurobi (seule méthode qui en dépend).
 
 Le détail des stratégies est dans [`notes/`](notes/).
 
@@ -25,14 +25,15 @@ src/
   evaluation.py        coût incrémental (objectif + pénalité des contraintes violées)
   heuristique.py       glouton                       (en cours)
   meta_heuristique.py  recuit simulé + descente      (en cours)
-  Plne.py              modèle PLNE                   (en cours)
+  Plne.py              modèle PLNE (Gurobi)          (en cours)
 notes/
   heuristique.md       stratégie du glouton
   meta_heuristique.md  stratégie du recuit simulé
+  plne.md              PLNE et dépendance à Gurobi
   rapport.md           données et graphes pour le rapport
 solutions/             solutions produites
 RTE_ChallengeROADEF2020_checker.py   checker officiel
-Makefile                             commandes (install, heuristique, metaheuristique, check, clean)
+Makefile                             commandes (install, heuristique, metaheuristique, plne, check, clean)
 ```
 
 ## Installation
@@ -40,6 +41,14 @@ Makefile                             commandes (install, heuristique, metaheuris
 ```bash
 make install
 ```
+
+`make install` crée un environnement virtuel `.venv` et y installe les versions figées de
+`requirements.txt` ; les commandes `make` l'utilisent automatiquement.
+
+**Gurobi** n'est nécessaire que pour la PLNE, avec une **licence complète** (licence académique
+gratuite, fichier indiqué par `GRB_LICENSE_FILE`). La licence fournie par `pip install gurobipy`
+est limitée à 2000 variables : dans ce cas, ou sans Gurobi, `make plne` s'arrête avec un message
+explicite. Le glouton et le recuit fonctionnent sans Gurobi.
 
 Les instances (`A_set/`, `B_set/`) ne sont pas versionnées (≈ 10 Go) : les télécharger depuis le site
 du challenge et les placer à la racine (`A_set/A_01.json`, `B_set/B_set_rounded/B_01.json`, …).
@@ -49,10 +58,11 @@ du challenge et les placer à la racine (`A_set/A_01.json`, `B_set/B_set_rounded
 ```bash
 make heuristique     INSTANCE=A_set/A_01.json   # -> solutions/A_01_heuristique.txt
 make metaheuristique INSTANCE=A_set/A_01.json   # -> solutions/A_01_metaheuristique.txt
+make plne            INSTANCE=A_set/A_01.json   # -> solutions/A_01_plne.txt
 ```
 
 Chaque commande écrit la solution puis la vérifie avec le checker officiel.
-`src/heuristique.py` et `src/meta_heuristique.py` prennent en arguments `<instance.json> <solution.txt>`.
+`src/heuristique.py`, `src/meta_heuristique.py` et `src/Plne.py` prennent en arguments `<instance.json> <solution.txt>`.
 
 ## Vérifier une solution
 
