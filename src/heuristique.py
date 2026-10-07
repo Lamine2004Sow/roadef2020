@@ -32,6 +32,48 @@ def meilleure_date(ev: Evaluation, i: str, k: int = 1, rng: random.Random = None
     return (rng or random).choice(candidates[:k])[1]
 
 
+def reparer(ev: Evaluation, max_iter: int = 50, tol: float = 1e-5,
+            time_limit: float = None) -> Evaluation:
+    """Algorithme 3 : déplace les interventions en violation tant que le coût pénalisé baisse.
+
+    Si aucune intervention en violation ne peut être améliorée, on essaie une fois toutes les
+    interventions (un manque de charge sous la borne min se corrige en déplaçant une intervention
+    qui n'est pas encore sur la période concernée), puis des swaps.
+    `time_limit` (s) borne la durée : les swaps sont coûteux sur les grosses instances.
+    """
+    t0 = time.time()
+    for _ in range(max_iter):
+        if ev.violation() <= tol or (time_limit is not None and time.time() - t0 > time_limit):
+            break
+        ameliore = False
+        for candidats in (ev.interventions_en_violation(tol), list(ev.start)):
+            for i in candidats:
+                delta, s = min((ev.delta({i: s}), s) for s in start_candidates(ev.interventions[i], ev.T))
+                if delta < 0:
+                    ev.assign({i: s})
+                    ameliore = True
+            if ameliore:
+                break
+        if not ameliore:
+            ameliore = _reparer_swaps(ev, tol)
+        if not ameliore:
+            break  # minimum local
+    return ev
+
+
+def _reparer_swaps(ev: Evaluation, tol: float) -> bool:
+    """Swaps entre une intervention en violation et n'importe quelle autre ; True si amélioration."""
+    ameliore = False
+    for i in ev.interventions_en_violation(tol):
+        for j in list(ev.start):
+            changes = ev.swap_changes(i, j) if j != i else None
+            if changes and ev.delta(changes) < 0:
+                ev.assign(changes)
+                ameliore = True
+                break
+    return ameliore
+
+
 def glouton(instance: dict, k: int = 1, lam: float = None, seed: int = None,
             a: float = 1.0, b: float = 1.0, c: float = 0.5) -> Evaluation:
     """Algorithme 2 : construction gloutonne, retourne l'Evaluation de la solution complète."""
@@ -42,6 +84,8 @@ def glouton(instance: dict, k: int = 1, lam: float = None, seed: int = None,
     rng = random.Random(seed)
     for i in ordre:
         ev.assign({i: meilleure_date(ev, i, k, rng)})
+    if ev.violation() > 0:
+        reparer(ev)
     return ev
 
 

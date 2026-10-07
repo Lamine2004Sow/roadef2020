@@ -127,6 +127,12 @@ Complexité : $O\big(\sum_{i} |\mathcal{S}_i|\big)$ appels à $\Delta C$, plus l
       \State $\textit{amélioré} \gets \textbf{vrai}$
     \EndIf
   \EndFor
+  \If{\textbf{non} \textit{amélioré}}
+    \State refaire les lignes 6 à 10 avec $\mathcal{I}_V \gets \mathcal{I}$ \Comment{bornes $\min$}
+  \EndIf
+  \If{\textbf{non} \textit{amélioré}}
+    \State appliquer le premier swap $(i, j)$, $i \in \mathcal{I}_V$, $j \in \mathcal{I}$, tel que $\Delta C < 0$
+  \EndIf
   \If{\textbf{non} \textit{amélioré}} \State \textbf{arrêter} \Comment{minimum local} \EndIf
 \EndFor
 \State \Return $x$

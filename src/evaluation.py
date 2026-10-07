@@ -156,6 +156,17 @@ class Evaluation:
 
     # ----------------------------------------------------------------- lecture
 
+    def interventions_en_violation(self, tol: float = 1e-5) -> list:
+        """Interventions en cours sur une période où une ressource est violée,
+        ou impliquées dans une exclusion violée."""
+        bad = self.res_viol.sum(axis=0) > tol
+        result = []
+        for i, s in self.start.items():
+            first, end = self._data(i, s)[:2]
+            if bad[first:end].any() or any(self._overlap(i, j, season) > 0 for j, season in self.excl[i]):
+                result.append(i)
+        return result
+
     def objective(self) -> float:
         return self.period_cost.sum() / self.T
 

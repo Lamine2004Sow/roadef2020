@@ -72,7 +72,7 @@ Poids par défaut : `a=1, b=1, c=0.5` (la faisabilité passe avant le regret).
 ## À faire
 
 - [x] Coder le glouton dans `src/heuristique.py` (`meilleure_date`, `glouton`, `lambda_defaut`, `main`).
-- [ ] `reparer` : violations restantes sur A_04, A_14, A_15, B_01, B_15.
+- [x] `reparer` : déplacements des interventions en violation, puis de toutes, puis swaps.
 - [ ] `grasp` : relances randomisées.
 - [ ] Régler les poids `a`, `b`, `c` par type d'instance.
 
@@ -100,3 +100,19 @@ Poids par défaut : `a=1, b=1, c=0.5` (la faisabilité passe avant le regret).
 
 Objectifs identiques au checker. 12 instances A sur 15 réalisables ;
 les violations restantes sont des dépassements de bornes de ressources.
+
+## Réparation (`reparer`)
+
+| Instance | Violations avant | Violations après | Objectif avant → après | Temps de réparation |
+|---|---|---|---|---|
+| A_04 | 101.6 | **0** | 2125.21 → 2173.63 | 30 s |
+| A_14 | 0.84 | **0** | 2508.09 → 2537.23 | < 1 s |
+| A_15 | 1.22 | **0** | 2509.62 → 2547.18 | < 1 s |
+| B_01 | 4.40 | 0.14 | 4109.34 → 4138.56 | 40 s |
+| B_15 | 124.9 | 6.0 | 22597.78 → 22593.42 | 388 s |
+
+Les 15 instances A sont réalisables. Sur B_01, il reste de petits dépassements de `Ressources_9`
+(consommée par les 100 interventions, saturée) : il faudrait déplacer plusieurs interventions
+à la fois. Augmenter λ (×100, ×10 000) ne change rien : vrai minimum local des déplacements et swaps.
+Pistes : GRASP (relances), ou laisser le recuit finir la réparation.
+Les swaps coûtent cher (|I_V| × |I| évaluations par passe) : `time_limit` pour les borner.
