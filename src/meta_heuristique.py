@@ -1,16 +1,20 @@
 """Métaheuristique : glouton, puis recuit simulé, puis descente (voir notes/pseudocode_meta_heuristique.md).
 
 Usage : python src/meta_heuristique.py <instance.json> <solution.txt> [--temps S] [--graine G]
+                                     [--param nom=valeur ...] [--resultats DOSSIER]
 Temps limite par défaut : ComputationTime de l'instance (en minutes).
+`--param` remplace une valeur de PARAMS ; `--resultats` écrit results.csv et convergence/ ailleurs
+(réglage des paramètres sans mélanger avec les résultats du rapport).
 """
 import argparse
 import math
+import os
 import random
 import time
 
 from evaluation import Evaluation
 from heuristique import glouton
-from logger import Convergence, log_instance, log_result
+from logger import RESULTS_DIR, Convergence, log_instance, log_result
 from reader import read_instance
 from writer import write_solution
 
@@ -181,7 +185,18 @@ def main():
     parser.add_argument('solution')
     parser.add_argument('--temps', type=float, help='temps limite total en secondes')
     parser.add_argument('--graine', type=int, default=0)
+    parser.add_argument('--param', action='append', default=[], metavar='NOM=VALEUR')
+    parser.add_argument('--resultats', default=RESULTS_DIR, help='dossier des CSV')
     args = parser.parse_args()
+
+    params = {}
+    for p in args.param:
+        nom, _, val = p.partition('=')
+        if nom not in PARAMS:
+            parser.error(f'paramètre inconnu : {nom} (connus : {", ".join(PARAMS)})')
+        params[nom] = type(PARAMS[nom])(float(val)) if isinstance(PARAMS[nom], int) else float(val)
+    variante = ' '.join(f'{k}={v:g}' for k, v in params.items())
+    csv_resultats = os.path.join(args.resultats, 'results.csv')
 
     instance = read_instance(args.instance)
     limite = args.temps if args.temps else 60.0 * float(instance.get('ComputationTime', 15))
@@ -192,18 +207,22 @@ def main():
     t_glouton = time.time() - t0
     print(f'Glouton  : objectif = {ev.objective():.4f} | violations = {ev.violation():.4f} | {t_glouton:.1f} s')
 
-    with Convergence(args.instance, 'recuit', args.graine) as conv:
-        stats = Recuit(ev, rng).run(0.9 * limite - (time.time() - t0), conv)
+    # Un fichier de convergence par variante : les essais du réglage ne s'écrasent pas
+    nom_conv = 'recuit' + ('_' + variante.replace(' ', '_') if variante else '')
+    with Convergence(args.instance, nom_conv, args.graine,
+                     dossier=os.path.join(args.resultats, 'convergence')) as conv:
+        stats = Recuit(ev, rng, **params).run(0.9 * limite - (time.time() - t0), conv)
     t_recuit = time.time() - t0
     log_instance(instance, args.instance)
-    log_result(ev, args.instance, 'recuit', t_recuit, graine=args.graine,
+    log_result(ev, args.instance, 'recuit', t_recuit, variante=variante, graine=args.graine, path=csv_resultats,
                T0=stats['T0'], alpha=stats['alpha'], iterations=stats['iterations'])
     print(f'Recuit   : objectif = {ev.objective():.4f} | violations = {ev.violation():.4f} '
           f'| {stats["iterations"]} itérations | {t_recuit:.1f} s')
 
     descente(ev, limite - (time.time() - t0), rng)
     t_total = time.time() - t0
-    log_result(ev, args.instance, 'recuit+descente', t_total, graine=args.graine,
+    log_result(ev, args.instance, 'recuit+descente', t_total, variante=variante, graine=args.graine,
+               path=csv_resultats,
                T0=stats['T0'], alpha=stats['alpha'], iterations=stats['iterations'])
     print(f'Descente : objectif = {ev.objective():.4f} | violations = {ev.violation():.4f} | {t_total:.1f} s')
     write_solution(args.solution, ev.start)
