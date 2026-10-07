@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+.dual-graph/
+
+# Projet ROADEF 2020
+# Instances du challenge (A_set 1,3 Go, B_set 9,1 Go) : trop lourdes pour git
+A_set/
+B_set/
+# Réglages locaux de Claude Code
+.claude/settings.local.json
