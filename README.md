@@ -32,21 +32,35 @@ notes/
   rapport.md           données et graphes pour le rapport
 solutions/             solutions produites
 RTE_ChallengeROADEF2020_checker.py   checker officiel
+Makefile                             commandes (install, heuristique, metaheuristique, check, clean)
 ```
 
 ## Installation
 
 ```bash
-pip install -r requirements.txt
+make install
 ```
 
 Les instances (`A_set/`, `B_set/`) ne sont pas versionnées (≈ 10 Go) : les télécharger depuis le site
 du challenge et les placer à la racine (`A_set/A_01.json`, `B_set/B_set_rounded/B_01.json`, …).
 
+## Résoudre une instance
+
+```bash
+make heuristique     INSTANCE=A_set/A_01.json   # -> solutions/A_01_heuristique.txt
+make metaheuristique INSTANCE=A_set/A_01.json   # -> solutions/A_01_metaheuristique.txt
+```
+
+Chaque commande écrit la solution puis la vérifie avec le checker officiel.
+`src/heuristique.py` et `src/meta_heuristique.py` prennent en arguments `<instance.json> <solution.txt>`.
+
 ## Vérifier une solution
 
 ```bash
-python3 RTE_ChallengeROADEF2020_checker.py A_set/A_01.json solutions/A_01.txt
+make check INSTANCE=A_set/A_01.json                     # solution par défaut : solutions/A_01.txt
+make check INSTANCE=A_set/A_01.json SOLUTION=sol.txt
 ```
+
+`make help` liste les commandes disponibles.
 
 Format d'une solution : une ligne `nom_intervention date_début` par intervention.
