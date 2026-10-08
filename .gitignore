@@ -228,3 +228,7 @@ B_set/
 .claude/settings.local.json
 # Configuration de l assistant (non versionnée)
 CLAUDE.md
+# Sorties volumineuses des campagnes (convergence ≈ 500 Mo) ; seule la synthèse du réglage est versionnée
+results/convergence/
+results/reglage/*
+!results/reglage/synthese.csv

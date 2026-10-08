@@ -23,8 +23,11 @@ src/
   writer.py            écriture d'une solution (.txt)
   indicateurs.py       indicateurs par intervention et tri du glouton
   evaluation.py        coût incrémental (objectif + pénalité des contraintes violées)
-  heuristique.py       glouton                       (en cours)
-  meta_heuristique.py  recuit simulé + descente      (en cours)
+  heuristique.py       glouton + réparation des violations
+  meta_heuristique.py  recuit simulé + descente
+  campagne.py          réglage des paramètres et campagne finale (plusieurs graines)
+  logger.py            enregistrement des résultats (results/)
+  graphes.py           graphes du rapport (results/figures/)
   Plne.py              modèle PLNE (Gurobi)          (en cours)
 notes/
   heuristique.md       stratégie du glouton
@@ -63,6 +66,18 @@ make plne            INSTANCE=A_set/A_01.json   # -> solutions/A_01_plne.txt
 
 Chaque commande écrit la solution puis la vérifie avec le checker officiel.
 `src/heuristique.py`, `src/meta_heuristique.py` et `src/Plne.py` prennent en arguments `<instance.json> <solution.txt>`.
+
+## Campagnes d'expériences
+
+```bash
+.venv/bin/python src/campagne.py reglage [--temps 120] [--jobs 6]            # -> results/reglage/synthese.csv
+.venv/bin/python src/campagne.py finale  [--graines 1 2 3 4 5] [--jobs 6]    # 15 instances A, 15 min chacune
+```
+
+La campagne finale (≈ 3 h 30 sur 6 cœurs) écrit `solutions/<instance>_metaheuristique_s<g>.txt`,
+vérifie chaque solution avec le checker et ajoute les résultats à `results/results.csv`.
+Paramètres du recuit : `--param nom=valeur` (voir `PARAMS` dans `src/meta_heuristique.py`).
+Résultats et réglage : `notes/meta_heuristique.md`.
 
 ## Vérifier une solution
 

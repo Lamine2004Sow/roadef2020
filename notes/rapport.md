@@ -7,7 +7,9 @@ results/
   instances.csv         caractéristiques des instances
   results.csv           une ligne par exécution
   convergence/          un CSV par exécution du recuit
-solutions/              meilleures solutions (.txt, vérifiables avec le checker)
+  logs/                 sortie du recuit et du checker, campagne finale (non versionné)
+  reglage/              réglage des paramètres : results.csv, convergence/, solutions/, synthese.csv
+solutions/              solutions (.txt, vérifiables avec le checker) ; campagne : <instance>_metaheuristique_s<g>.txt
 ```
 
 ## Code
@@ -145,9 +147,11 @@ départ), métaheuristique meilleur compromis, PLNE référence exacte sur les p
 
 - [x] `src/logger.py` : écriture de `results.csv` et des fichiers de convergence.
 - [x] `src/graphes.py` : génération des graphes (matplotlib) depuis `results/`.
-- [ ] Brancher `Convergence` et `log_result` dans le recuit (méthode `recuit`, graines).
+- [x] Brancher `Convergence` et `log_result` dans le recuit (méthodes `recuit` et `recuit+descente`, graines).
 - [ ] Récupérer les meilleures solutions connues du challenge (pour l'écart en %).
 - [ ] Colonne `taille` dans `instances.csv` (+ recalcul des instances déjà enregistrées).
 - [ ] Graphes 12a, 12b (taille) et 13 (profil de performance).
 - [ ] Colonnes PLNE dans `results.csv` : borne inférieure et gap.
-- [ ] Choisir le sous-ensemble d'instances de réglage (étape 1).
+- [x] Choisir le sous-ensemble d'instances de réglage : A_06, A_09, A_13 (voir `notes/meta_heuristique.md`).
+  Elles restent dans la campagne finale : à signaler ou à présenter à part.
+- [x] Campagne finale du recuit : 15 instances A × 5 graines au temps du challenge (`src/campagne.py`).

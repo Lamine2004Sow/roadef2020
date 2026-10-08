@@ -71,12 +71,15 @@ après 500 mouvements. Environ 2000 à 3000 essais par seconde en Python.
 - [x] Mouvements déplacement et swap.
 - [x] Boucle du recuit + calibrage de `T0`.
 - [x] Descente finale.
-- [ ] Régler les paramètres sur les instances de réglage.
-- [ ] Lancer avec le temps limite du challenge et plusieurs graines.
+- [x] Régler les paramètres sur les instances de réglage (voir « Réglage des paramètres »).
+- [x] Lancer avec le temps limite du challenge et plusieurs graines (voir « Résultats au temps du challenge »).
 
 ## Implémentation (`src/meta_heuristique.py`)
 
 `make metaheuristique INSTANCE=... [TEMPS=60] [GRAINE=0]` (temps par défaut : `ComputationTime` de l'instance, en minutes).
+
+Options en ligne de commande : `--param nom=valeur` (répétable) remplace une valeur de `PARAMS`, enregistrée dans la
+colonne `variante` ; `--resultats DOSSIER` écrit `results.csv` et `convergence/` ailleurs que dans `results/`.
 
 | Fonction | Rôle |
 |---|---|
@@ -101,3 +104,68 @@ pénalité (λ ≈ 10⁵) : le recuit marchait au hasard et n'améliorait jamais
 | B_01 | 4200.76 (viol. 0,14) | 4099.39 (réalisable) | **4099.39** |
 
 Le recuit termine la réparation de B_01, que le glouton ne réussissait pas.
+
+## Réglage des paramètres (`python src/campagne.py reglage`)
+
+Un facteur à la fois autour de `PARAMS`, sur **A_06, A_09, A_13** (tailles et écarts glouton / meilleur
+connu variés), graines 100 et 101, **120 s** par exécution, 6 exécutions en parallèle.
+Critère : écart moyen (%) au meilleur objectif trouvé pendant le réglage. Synthèse : `results/reglage/synthese.csv`.
+
+| Variante | Moyenne | A_06 | A_09 | A_13 |
+|---|---|---|---|---|
+| ratio_final=1e-4 | 0,36 % | 1,04 % | 0 | 0,05 % |
+| p_swap=0,5 | 0,58 % | 1,65 % | 0 | 0,08 % |
+| **défaut** | 0,69 % | 1,77 % | 0 | 0,31 % |
+| p0=0,8 | 0,86 % | 2,48 % | 0 | 0,09 % |
+| p0=0,2 | 0,96 % | 2,84 % | 0 | 0,05 % |
+| r=2 | 1,06 % | 3,08 % | 0 | 0,10 % |
+| p_loc=0,95 | 1,24 % | 3,67 % | 0 | 0,07 % |
+| r=10 | 1,26 % | 3,72 % | 0 | 0,07 % |
+| ratio_final=1e-2 | 1,39 % | 3,91 % | 0 | 0,26 % |
+| p_loc=0,5 | 1,51 % | 4,45 % | 0 | 0,08 % |
+| p_swap=0,15 | 1,70 % | 5,07 % | 0 | 0,05 % |
+| p_swap=0 | 2,03 % | 5,70 % | 0 | 0,38 % |
+
+Validation des meilleures combinaisons (4 graines, 100 à 103, 120 s), objectif moyen :
+
+| Configuration | A_06 | A_13 |
+|---|---|---|
+| **défaut** | **614,3** | 2003,4 |
+| p_swap=0,5 + ratio_final=1e-4 | 620,5 | 2005,7 |
+| p_swap=0,7 + ratio_final=1e-4 | 617,3 | **2000,2** |
+
+**Conclusion** : les valeurs par défaut sont conservées.
+- Les écarts entre configurations (< 1 %) sont du même ordre que la variation entre graines
+  (défaut sur A_06 : 599 à 624) ; le classement du premier tableau tenait à deux graines favorables.
+- Seul effet net : **les swaps sont nécessaires** (sans swap, A_06 ≈ 633 en moyenne contre 614).
+- A_09 ne discrimine pas : toutes les variantes atteignent 1507,28.
+- Limites : 2 à 4 graines, 120 s au lieu de 900 s ; les instances de réglage font aussi partie de
+  l'évaluation finale (à signaler, ou les présenter à part).
+
+## Résultats au temps du challenge (`python src/campagne.py finale`)
+
+15 instances A × graines 1 à 5, `ComputationTime` = 15 min (hors lecture du JSON), paramètres par défaut,
+6 exécutions en parallèle sur 8 cœurs. **75/75 réalisables** selon le checker officiel, dont l'objectif
+coïncide avec `Evaluation` (écart max 3·10⁻⁹). Solutions : `solutions/<instance>_metaheuristique_s<g>.txt`.
+
+| Instance | Glouton | Meilleur | Moyenne ± écart-type | Gain (meilleur) |
+|---|---|---|---|---|
+| A_01 | 1807,83 | 1769,24 | 1769,81 ± 0,73 | −2,1 % |
+| A_02 | 4685,07 | 4672,13 | 4673,54 ± 1,09 | −0,3 % |
+| A_03 | 850,80 | 848,18 | 849,67 ± 1,32 | −0,3 % |
+| A_04 | 2173,63 | 2093,37 | 2103,37 ± 6,20 | −3,7 % |
+| A_05 | 639,87 | 635,37 | 636,01 ± 0,53 | −0,7 % |
+| A_06 | 641,15 | 594,69 | 601,23 ± 7,31 | −7,2 % |
+| A_07 | 2272,78 | 2272,78 | 2272,78 ± 0 | 0 |
+| A_08 | 745,83 | 744,29 | 744,29 ± 0 | −0,2 % |
+| A_09 | 1586,19 | 1507,28 | 1507,28 ± 0 | −5,0 % |
+| A_10 | 2997,25 | 2994,85 | 2994,97 ± 0,16 | −0,1 % |
+| A_11 | 501,62 | 495,27 | 495,44 ± 0,20 | −1,3 % |
+| A_12 | 792,00 | 789,63 | 789,73 ± 0,18 | −0,3 % |
+| A_13 | 2012,72 | 1999,00 | 2000,53 ± 1,35 | −0,7 % |
+| A_14 | 2537,23 | 2312,69 | 2321,53 ± 9,13 | −8,9 % |
+| A_15 | 2547,18 | 2314,94 | 2323,28 ± 17,03 | −9,1 % |
+
+- Gains les plus forts sur A_14 et A_15 (−9 %), où le glouton devait réparer des violations.
+- Petites instances (A_07 à A_09) : même résultat pour toutes les graines.
+- A_04, A_06, A_14, A_15 : écart-type de 6 à 17, plusieurs graines utiles.
