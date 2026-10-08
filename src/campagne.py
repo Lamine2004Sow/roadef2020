@@ -1,4 +1,4 @@
-"""Campagnes d'exécution du recuit et de la PLNE (voir notes/meta_heuristique.md et notes/plne.md).
+"""Campagnes d'exécution du recuit et de la PLNE.
 
 Usage :
     python src/campagne.py reglage [--temps 120] [--jobs 6]
@@ -204,7 +204,7 @@ def main():
     p.add_argument('--jobs', type=int, default=1, help='PLNE simultanées')
     p.add_argument('--threads', type=int, default=0, help='cœurs par PLNE (0 : tous)')
     p.add_argument('--memoire', type=float, default=8, help='mémoire max de Gurobi en Go')
-    p.add_argument('--coupes', action='store_true', help='coupes de quantile (voir notes/plne.md)')
+    p.add_argument('--coupes', action='store_true', help='coupes de quantile (voir src/Plne.py)')
     p.add_argument('--instances', nargs='+', default=ORDRE_PLNE)
     args = parser.parse_args()
     if args.campagne == 'reglage':

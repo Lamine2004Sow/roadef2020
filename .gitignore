@@ -224,22 +224,13 @@ __marimo__/
 # Instances du challenge (A_set 1,3 Go, B_set 9,1 Go) : trop lourdes pour git
 A_set/
 B_set/
+# Sorties des programmes (solutions, résultats, figures) : regénérées par les commandes ;
+# seule la référence du challenge est versionnée
+solutions/
+results/*
+!results/best_known.csv
 # Réglages locaux de Claude Code
 .claude/settings.local.json
-# Configuration de l assistant (non versionnée)
+# Configuration et contexte de l assistant (non versionnés)
 CLAUDE.md
-# Sorties volumineuses des campagnes (convergence ≈ 500 Mo) ; seule la synthèse du réglage est versionnée
-results/convergence/
-results/reglage/*
-!results/reglage/synthese.csv
-# Contexte de session de l assistant (non versionné)
 CONTEXT.md
-# Compilation LaTeX du rapport
-rapport/*.aux
-rapport/*.log
-rapport/*.out
-rapport/*.toc
-rapport/*.fls
-rapport/*.fdb_latexmk
-rapport/*.synctex.gz
-rapport/main.pdf

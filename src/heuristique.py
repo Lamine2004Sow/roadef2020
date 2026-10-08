@@ -1,7 +1,7 @@
 """Heuristique gloutonne. Usage : python src/heuristique.py <instance.json> <solution.txt>
 
 Interventions triées de la plus difficile à la plus facile, puis placées une à une
-à la date qui augmente le moins le coût pénalisé (voir notes/pseudocode_heuristique.md).
+à la date qui augmente le moins le coût pénalisé.
 """
 import random
 import sys

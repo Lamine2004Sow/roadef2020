@@ -1,4 +1,4 @@
-"""Graphes du rapport (voir notes/rapport.md). Figures écrites dans results/figures/ (PNG et PDF).
+"""Graphes du rapport. Figures écrites dans results/figures/ (PNG et PDF).
 
 Usage :
     python src/graphes.py                                  graphes 1 à 8, 12a, 12b et 13 depuis results/

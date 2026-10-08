@@ -1,4 +1,4 @@
-"""Métaheuristique : glouton, puis recuit simulé, puis descente (voir notes/pseudocode_meta_heuristique.md).
+"""Métaheuristique : glouton, puis recuit simulé, puis descente.
 
 Usage : python src/meta_heuristique.py <instance.json> <solution.txt> [--temps S] [--graine G]
                                      [--param nom=valeur ...] [--resultats DOSSIER]

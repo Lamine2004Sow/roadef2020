@@ -1,8 +1,8 @@
-"""Tableau comparatif glouton / recuit / PLNE au temps du challenge (voir notes/rapport.md).
+"""Tableau comparatif glouton / recuit / PLNE au temps du challenge.
 
 Usage : python src/tableau.py
 Lit results/results.csv et results/best_known.csv ; écrit results/tableau.csv, results/tableau.md
-et results/tableau.tex (inclus dans rapport/main.tex).
+et results/tableau.tex (corps de tableau pour un rapport LaTeX).
 Une ligne par instance A, en deux blocs : instances hors réglage, puis instances de réglage du recuit.
     glouton : exécution la plus récente
     recuit  : recuit+descente de la campagne finale (graines, sans variante), moyenne ± écart-type et meilleure
@@ -136,7 +136,7 @@ def markdown(ls: list) -> str:
     md = ['<!-- Généré par python src/tableau.py : ne pas modifier à la main -->', '',
           'Écart (%) à la référence (meilleure valeur de la qualification du challenge) entre parenthèses ; '
           'en gras : référence atteinte (écart < 0,001 %). Gap certifié : (PLNE − borne) / PLNE, '
-          'calculé par Gurobi ; † : borne obtenue avec les coupes de quantile (`--coupes`, voir `notes/plne.md`). '
+          'calculé par Gurobi ; † : borne obtenue avec les coupes de quantile (`--coupes`, voir `src/Plne.py`). '
           'Recuit et PLNE : `ComputationTime` du challenge (15 min) ; temps PLNE : celui de la meilleure borne.', '']
     md += bloc('Instances hors réglage', test)
     md += bloc('Instances de réglage du recuit', reglage)

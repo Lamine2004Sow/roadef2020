@@ -1,10 +1,10 @@
-"""PLNE complète avec Gurobi (voir notes/plne.md).
+"""PLNE complète avec Gurobi.
 
 Usage : python src/Plne.py <instance.json> <solution.txt> [--temps S] [--depart solution.txt] [--threads N]
                                                   [--memoire GO] [--coupes]
 Temps limite par défaut : ComputationTime de l'instance (en minutes).
 `--depart` fournit une solution de départ (par exemple la meilleure du recuit) comme MIP start.
-`--coupes` ajoute les coupes de quantile (voir la section « coupes de quantile » et notes/plne.md).
+`--coupes` ajoute les coupes de quantile (voir la section « coupes de quantile » ci-dessous).
 
 Modèle (indices de périodes et de dates de début à partir de 1, comme l'instance) :
     x[i,s] ∈ {0,1}   l'intervention i commence en s           Σ_s x[i,s] = 1

@@ -1,4 +1,4 @@
-"""Enregistrement des résultats pour le rapport (voir notes/rapport.md).
+"""Enregistrement des résultats pour le rapport.
 
 results/instances.csv         caractéristiques des instances
 results/results.csv           une ligne par exécution
