@@ -6,7 +6,7 @@ et results/tableau.tex (corps de tableau pour un rapport LaTeX).
 Une ligne par instance A, en deux blocs : instances hors réglage, puis instances de réglage du recuit.
     glouton : exécution la plus récente
     recuit  : recuit+descente de la campagne finale (graines, sans variante), moyenne ± écart-type et meilleure
-    PLNE    : exécution la plus récente de chaque variante (modèle seul, avec coupes de quantile) ;
+    PLNE    : exécution la plus récente de chaque variante (modèle seul, avec inégalités de sous-ensemble) ;
               meilleure solution et meilleure borne des variantes, toutes deux certifiées, d'où le gap
 """
 import csv
@@ -137,7 +137,7 @@ def markdown(ls: list) -> str:
     md = ['<!-- Généré par python src/tableau.py : ne pas modifier à la main -->', '',
           'Écart (%) à la référence (meilleure valeur de la qualification du challenge) entre parenthèses ; '
           'en gras : référence atteinte (écart < 0,001 %). Gap certifié : (PLNE − borne) / PLNE, '
-          'calculé par Gurobi ; † : borne obtenue avec les coupes de quantile (`--coupes`, voir `src/Plne.py`). '
+          'calculé par Gurobi ; † : valeur obtenue avec les inégalités de sous-ensemble (`--coupes`, voir `src/Plne.py`). '
           'Recuit et PLNE : `ComputationTime` du challenge (15 min) ; temps PLNE : celui de la meilleure borne.', '']
     md += bloc('Instances hors réglage', test)
     md += bloc('Instances de réglage du recuit', reglage)

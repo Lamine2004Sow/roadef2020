@@ -11,7 +11,7 @@ Usage :
         PLNE sur les instances A (temps du challenge par défaut), une à la fois par défaut,
         en partant de la meilleure solution réalisable du recuit (MIP start) ;
         solutions dans solutions/<instance>_plne.txt, logs dans results/logs/<instance>_plne.log ;
-        --coupes : coupes de quantile (solutions et logs suffixés _coupes)
+        --coupes : inégalités de sous-ensemble (solutions et logs suffixés _coupes)
 """
 import argparse
 import csv
@@ -204,7 +204,7 @@ def main():
     p.add_argument('--jobs', type=int, default=1, help='PLNE simultanées')
     p.add_argument('--threads', type=int, default=0, help='cœurs par PLNE (0 : tous)')
     p.add_argument('--memoire', type=float, default=8, help='mémoire max de Gurobi en Go')
-    p.add_argument('--coupes', action='store_true', help='coupes de quantile (voir src/Plne.py)')
+    p.add_argument('--coupes', action='store_true', help='inégalités de sous-ensemble (voir src/Plne.py)')
     p.add_argument('--instances', nargs='+', default=ORDRE_PLNE)
     args = parser.parse_args()
     if args.campagne == 'reglage':

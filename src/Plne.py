@@ -4,7 +4,7 @@ Usage : python src/Plne.py <instance.json> <solution.txt> [--temps S] [--depart 
                                                   [--memoire GO] [--coupes]
 Temps limite par défaut : ComputationTime de l'instance (en minutes).
 `--depart` fournit une solution de départ (par exemple la meilleure du recuit) comme MIP start.
-`--coupes` ajoute les coupes de quantile (voir la section « coupes de quantile » ci-dessous).
+`--coupes` ajoute les inégalités de sous-ensemble (voir la section « inégalités de sous-ensemble » ci-dessous).
 
 Modèle (indices de périodes et de dates de début à partir de 1, comme l'instance) :
     x[i,s] ∈ {0,1}   l'intervention i commence en s           Σ_s x[i,s] = 1
@@ -167,7 +167,7 @@ def construire(instance: dict, env, quantile_exact: bool = True) -> tuple:
     return m, x, Q
 
 
-# ------------------------------------------------------- coupes de quantile
+# ------------------------------------------------------- inégalités de sous-ensemble
 #
 # Au plus S_t − k_t scénarios dépassent Q[t] : tout ensemble W de S_t − k_t + 1 scénarios en contient
 # un sous Q[t], donc Q[t] ≥ min_{ω∈W} r[t,ω] ≥ Σ_{i,s} (min_{ω∈W} risk_i[t][s][ω]) · x[i,s]
@@ -276,7 +276,7 @@ def main():
     parser.add_argument('--threads', type=int, default=0, help='0 : tous les cœurs')
     parser.add_argument('--memoire', type=float, help='mémoire max de Gurobi en Go (arrêt propre au-delà)')
     parser.add_argument('--coupes', action='store_true',
-                        help='coupes de quantile : générées sur la relaxation linéaire (20 %% du temps au plus), '
+                        help='inégalités de sous-ensemble : générées sur la relaxation linéaire (20 %% du temps au plus), '
                              'puis à chaque nœud')
     args = parser.parse_args()
 
