@@ -1,9 +1,10 @@
 """PLNE complète avec Gurobi (voir notes/plne.md).
 
 Usage : python src/Plne.py <instance.json> <solution.txt> [--temps S] [--depart solution.txt] [--threads N]
-                                                  [--memoire GO]
+                                                  [--memoire GO] [--coupes]
 Temps limite par défaut : ComputationTime de l'instance (en minutes).
 `--depart` fournit une solution de départ (par exemple la meilleure du recuit) comme MIP start.
+`--coupes` ajoute les coupes de quantile (voir la section « coupes de quantile » et notes/plne.md).
 
 Modèle (indices de périodes et de dates de début à partir de 1, comme l'instance) :
     x[i,s] ∈ {0,1}   l'intervention i commence en s           Σ_s x[i,s] = 1
@@ -21,6 +22,8 @@ import math
 import sys
 import time
 from collections import defaultdict
+
+import numpy as np
 
 try:
     import gurobipy as gp
@@ -58,14 +61,17 @@ def gurobi_env():
     return env
 
 
-def construire(instance: dict, env) -> tuple:
-    """Modèle complet ; retourne (modèle, x) avec x[(i, s)] la variable de début."""
+def construire(instance: dict, env, quantile_exact: bool = True) -> tuple:
+    """Modèle complet ; retourne (modèle, x, Q) avec x[(i, s)] la variable de début et Q[t] (t 0-based)
+    la variable de quantile des périodes où il n'est ni la moyenne ni le maximum (k_t < S_t).
+    `quantile_exact=False` : sans les binaires y ni les big-M, Q[t] n'est alors borné que par des coupes."""
     GRB = gp.GRB
     T = instance['T']
     alpha, tau = instance['Alpha'], instance['Quantile']
     S = instance['Scenarios_number']
     interventions = instance['Interventions']
     m = gp.Model('roadef2020', env=env)
+    Q = {}
 
     x = {}
     for i, interv in interventions.items():
@@ -146,17 +152,119 @@ def construire(instance: dict, env) -> tuple:
         e = m.addVar(lb=0.0, name=f'E[{t + 1}]')
         m.addConstr(e >= q - mu, name=f'exces[{t + 1}]')
         if k < S[t]:
-            y = m.addVars(S[t], vtype=GRB.BINARY, name=f'y[{t + 1}]')
-            m.addConstr(y.sum() <= S[t] - k, name=f'quantile[{t + 1}]')
-            for w in range(S[t]):
-                big_m = r_max[t].get(w, 0.0) - q_lb
-                m.addConstr(gp.LinExpr(*risque[t][w]) <= q + big_m * y[w], name=f'q[{t + 1},{w}]')
+            Q[t] = q
+            if quantile_exact:
+                y = m.addVars(S[t], vtype=GRB.BINARY, name=f'y[{t + 1}]')
+                m.addConstr(y.sum() <= S[t] - k, name=f'quantile[{t + 1}]')
+                for w in range(S[t]):
+                    big_m = r_max[t].get(w, 0.0) - q_lb
+                    m.addConstr(gp.LinExpr(*risque[t][w]) <= q + big_m * y[w], name=f'q[{t + 1},{w}]')
         else:
             for w in range(S[t]):  # τ = 1 : Q[t] est le maximum
                 m.addConstr(gp.LinExpr(*risque[t][w]) <= q, name=f'q[{t + 1},{w}]')
         obj += (1 - alpha) * e
     m.setObjective(obj * (1.0 / T), GRB.MINIMIZE)
-    return m, x
+    return m, x, Q
+
+
+# ------------------------------------------------------- coupes de quantile
+#
+# Au plus S_t − k_t scénarios dépassent Q[t] : tout ensemble W de S_t − k_t + 1 scénarios en contient
+# un sous Q[t], donc Q[t] ≥ min_{ω∈W} r[t,ω] ≥ Σ_{i,s} (min_{ω∈W} risk_i[t][s][ω]) · x[i,s]
+# (une seule date de début par intervention). Coupe linéaire valide, sans binaire, forte quand les
+# scénarios sont corrélés : elle remplace en relaxation le big-M, qui ne borne presque pas Q[t].
+
+def contributions(instance: dict, x: dict, Q: dict) -> dict:
+    """{t : (clés (i, s) en cours en t, matrice de leurs risques par scénario)} pour t dans Q."""
+    T = instance['T']
+    cles = defaultdict(list)
+    risques = defaultdict(list)
+    for (i, s) in x:
+        interv = instance['Interventions'][i]
+        for t in range(s, min(s + duration(interv, s), T + 1)):
+            if t - 1 in Q:
+                cles[t - 1].append((i, s))
+                risques[t - 1].append(interv['risk'][str(t)][str(s)])
+    return {t: (cles[t], np.array(risques[t], dtype=float)) for t in Q}
+
+
+def separer(contrib: dict, n_hors: dict, valeur_x, valeur_q) -> list:
+    """Coupes violées par le point (x, Q) : W = les S_t − k_t + 1 scénarios les plus hauts en t.
+    `valeur_x(cles)` : valeurs des x[i,s] (tableau) ; `valeur_q(t)` : valeur de Q[t] (−inf : toujours ajouter)."""
+    coupes = []
+    for t, (cles, R) in contrib.items():
+        xv = valeur_x(cles)
+        W = np.argsort(-(xv @ R))[:n_hors[t] + 1]
+        c = R[:, W].min(axis=1)
+        if c @ xv > valeur_q(t) + 1e-6 * max(1.0, abs(c @ xv)):
+            nz = c != 0
+            coupes.append((t, [k for k, z in zip(cles, nz) if z], c[nz]))
+    return coupes
+
+
+def ajouter_coupe(m, x: dict, Q: dict, coupe: tuple):
+    t, cles, coefs = coupe
+    m.addConstr(gp.LinExpr(coefs.tolist(), [x[k] for k in cles]) <= Q[t], name=f'coupe[{t + 1}]')
+
+
+def coupes(instance: dict, env, m, x: dict, Q: dict, departs: list, limite: float, threads: int) -> tuple:
+    """Génération de coupes sur la relaxation linéaire sans big-M (Q[t] borné par les seules coupes) :
+    coupes initiales depuis les solutions `departs`, puis séparation tant qu'une coupe est violée
+    et que la borne progresse, dans `limite` secondes. Chaque coupe est ajoutée aussi au modèle exact `m`.
+    Retourne (borne de la relaxation, nombre de coupes, contributions, S_t − k_t) ; la borne est valide."""
+    t0 = time.time()
+    S, tau = instance['Scenarios_number'], instance['Quantile']
+    n_hors = {t: S[t] - math.ceil(S[t] * tau) for t in Q}
+    contrib = contributions(instance, x, Q)
+    lp_m, lp_x, lp_Q = construire(instance, env, quantile_exact=False)
+    lp_m.update()
+    lp = lp_m.relax()
+    lp_x = {k: lp.getVarByName(v.VarName) for k, v in lp_x.items()}
+    lp_Q = {t: lp.getVarByName(q.VarName) for t, q in lp_Q.items()}
+    lp.Params.OutputFlag = 0
+    lp.Params.Threads = threads
+    n = 0
+    for depart in departs:
+        for c in separer(contrib, n_hors, lambda cles: np.array([float(depart.get(i) == s) for i, s in cles]),
+                         lambda t: -math.inf):
+            ajouter_coupe(lp, lp_x, lp_Q, c)
+            ajouter_coupe(m, x, Q, c)
+            n += 1
+    borne, stagne = -math.inf, 0
+    while time.time() - t0 < limite:
+        lp.Params.TimeLimit = max(1.0, limite - (time.time() - t0))
+        lp.optimize()
+        if lp.Status != gp.GRB.OPTIMAL:
+            break
+        stagne = stagne + 1 if lp.ObjVal < borne + 1e-6 * abs(lp.ObjVal) else 0
+        borne = max(borne, lp.ObjVal)
+        xs = lp.getAttr('X', lp_x)
+        nouvelles = separer(contrib, n_hors, lambda cles: np.array([xs[k] for k in cles]), lambda t: lp_Q[t].X)
+        print(f'  coupes : {time.time() - t0:6.1f} s | borne {borne:.4f} | {n} coupes (+{len(nouvelles)})', flush=True)
+        if not nouvelles or stagne >= 3:
+            break
+        for c in nouvelles:
+            ajouter_coupe(lp, lp_x, lp_Q, c)
+            ajouter_coupe(m, x, Q, c)
+        n += len(nouvelles)
+    return borne, n, contrib, n_hors
+
+
+def callback_coupes(contrib: dict, n_hors: dict, x: dict, Q: dict):
+    """Callback Gurobi : sépare les mêmes coupes sur la relaxation de chaque nœud (cbCut, PreCrush = 1)."""
+    cles = list(x)
+    vx = [x[k] for k in cles]
+    periodes = list(Q)
+    vq = [Q[t] for t in periodes]
+
+    def cb(model, where):
+        if where != gp.GRB.Callback.MIPNODE or model.cbGet(gp.GRB.Callback.MIPNODE_STATUS) != gp.GRB.OPTIMAL:
+            return
+        xs = dict(zip(cles, model.cbGetNodeRel(vx)))
+        qs = dict(zip(periodes, model.cbGetNodeRel(vq)))
+        for t, cl, coefs in separer(contrib, n_hors, lambda c: np.array([xs[k] for k in c]), lambda t: qs[t]):
+            model.cbCut(gp.LinExpr(coefs.tolist(), [x[k] for k in cl]) <= Q[t])
+    return cb
 
 
 def main():
@@ -167,17 +275,30 @@ def main():
     parser.add_argument('--depart', help='solution de départ (MIP start)')
     parser.add_argument('--threads', type=int, default=0, help='0 : tous les cœurs')
     parser.add_argument('--memoire', type=float, help='mémoire max de Gurobi en Go (arrêt propre au-delà)')
+    parser.add_argument('--coupes', action='store_true',
+                        help='coupes de quantile : générées sur la relaxation linéaire (20 %% du temps au plus), '
+                             'puis à chaque nœud')
     args = parser.parse_args()
 
     env = gurobi_env()
     instance = read_instance(args.instance)
     limite = args.temps if args.temps else 60.0 * float(instance.get('ComputationTime', 15))
     t0 = time.time()
-    m, x = construire(instance, env)
+    m, x, Q = construire(instance, env)
     m.update()
     t_construction = time.time() - t0
     print(f'Modèle   : {m.NumVars} variables ({m.NumBinVars} binaires), {m.NumConstrs} contraintes, '
           f'{m.NumNZs} non-zéros | {t_construction:.1f} s')
+
+    borne_coupes, n_coupes, cb = -math.inf, 0, None
+    if args.coupes and Q:
+        departs = [read_solution(args.depart)] if args.depart else []
+        borne_coupes, n_coupes, contrib, n_hors = coupes(instance, env, m, x, Q, departs, 0.2 * limite, args.threads)
+        cb = callback_coupes(contrib, n_hors, x, Q)
+        m.Params.PreCrush = 1  # nécessaire à cbCut
+        m.update()
+        print(f'Coupes   : {n_coupes} coupes, borne de la relaxation {borne_coupes:.4f} | {time.time() - t0:.1f} s')
+    t_construction = time.time() - t0
 
     if args.depart:
         for (i, s), v in x.items():
@@ -191,7 +312,7 @@ def main():
     m.Params.MIPGap = 0.0  # optimum exact quand il est atteint (défaut Gurobi : 0,01 %)
     if args.memoire:
         m.Params.MemLimit = args.memoire  # statut MEM_LIMIT, garde la meilleure solution trouvée
-    m.optimize()
+    m.optimize(cb)
     temps = time.time() - t0
 
     if m.SolCount == 0:
@@ -201,10 +322,10 @@ def main():
 
     ev = Evaluation(instance)
     ev.assign(starts)
-    borne = m.ObjBound
-    gap = m.MIPGap
+    borne = max(m.ObjBound, borne_coupes)
+    gap = 0.0 if m.Status == gp.GRB.OPTIMAL else (ev.objective() - borne) / abs(ev.objective())
     log_instance(instance, args.instance)
-    log_result(ev, args.instance, 'plne', temps, borne=borne, gap=gap)
+    log_result(ev, args.instance, 'plne', temps, variante='coupes' if args.coupes else '', borne=borne, gap=gap)
     statut = 'optimal' if m.Status == gp.GRB.OPTIMAL else f'statut {m.Status}'
     print(f'PLNE     : objectif = {ev.objective():.4f} | violations = {ev.violation():.4f} '
           f'| borne = {borne:.4f} | gap = {100 * gap:.3f} % | {statut} | {temps:.1f} s')

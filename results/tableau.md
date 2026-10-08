@@ -1,13 +1,13 @@
 <!-- Généré par python src/tableau.py : ne pas modifier à la main -->
 
-Écart (%) à la référence (meilleure valeur de la qualification du challenge) entre parenthèses ; en gras : référence atteinte (écart < 0,001 %). Gap certifié : (PLNE − borne) / PLNE, calculé par Gurobi. Recuit et PLNE : `ComputationTime` du challenge (15 min).
+Écart (%) à la référence (meilleure valeur de la qualification du challenge) entre parenthèses ; en gras : référence atteinte (écart < 0,001 %). Gap certifié : (PLNE − borne) / PLNE, calculé par Gurobi ; † : borne obtenue avec les coupes de quantile (`--coupes`, voir `notes/plne.md`). Recuit et PLNE : `ComputationTime` du challenge (15 min) ; temps PLNE : celui de la meilleure borne.
 
 **Instances hors réglage (12)**
 
 | Instance | Référence | Glouton | Recuit : moyenne ± σ | Recuit : meilleur | PLNE | Borne PLNE | Gap certifié | Temps glouton | Temps PLNE |
 |---|---|---|---|---|---|---|---|---|---|
 | A_01 | 1767,82 | 1807,83 (2,26 %) | 1769,81 ± 0,73 (0,11 %) | 1769,24 (0,08 %) | **1767,82 (0)** | 1767,82 | 0 (optimal) | 2,3 s | 2,6 s |
-| A_02 | 4671,38 | 4685,07 (0,29 %) | 4673,54 ± 1,09 (0,05 %) | 4672,13 (0,02 %) | 4672,13 (0,02 %) | 2058,39 | 55,94 % | 1,4 s | 900 s |
+| A_02 | 4671,38 | 4685,07 (0,29 %) | 4673,54 ± 1,09 (0,05 %) | 4672,13 (0,02 %) | 4671,94 (0,01 %) | 4610,21 † | 1,32 % | 1,4 s | 900 s |
 | A_03 | 848,18 | 850,80 (0,31 %) | 849,67 ± 1,32 (0,18 %) | **848,18 (0)** | **848,18 (0)** | 848,18 | 0 (optimal) | 1,2 s | 0,5 s |
 | A_04 | 2085,88 | 2173,63 (4,21 %) | 2103,37 ± 6,20 (0,84 %) | 2093,37 (0,36 %) | **2085,88 (0)** | 2085,88 | 0 (optimal) | 85 s | 112 s |
 | A_05 | 635,22 | 639,87 (0,73 %) | 636,01 ± 0,53 (0,12 %) | 635,37 (0,02 %) | 635,37 (0,02 %) | 593,49 | 6,59 % | 6,7 s | 900 s |
@@ -18,7 +18,7 @@
 | A_12 | 789,63 | 792,00 (0,30 %) | 789,73 ± 0,18 (0,01 %) | **789,63 (0)** | **789,63 (0)** | 789,63 | 0 (optimal) | 0,3 s | 0,8 s |
 | A_14 | 2264,12 | 2537,23 (12,06 %) | 2321,53 ± 9,13 (2,54 %) | 2312,69 (2,14 %) | 2312,36 (2,13 %) | 2080,06 | 10,05 % | 0,8 s | 900 s |
 | A_15 | 2268,57 | 2547,18 (12,28 %) | 2323,28 ± 17,03 (2,41 %) | 2314,94 (2,04 %) | 2314,92 (2,04 %) | 2071,06 | 10,53 % | 0,9 s | 900 s |
-| **Moyenne** | | 2,83 % | 0,52 % | 0,39 % | 0,35 % | | 8,00 % | | |
+| **Moyenne** | | 2,83 % | 0,52 % | 0,39 % | 0,35 % | | 3,45 % | | |
 
 **Instances de réglage du recuit (3)**
 

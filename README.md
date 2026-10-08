@@ -74,7 +74,7 @@ Chaque commande écrit la solution puis la vérifie avec le checker officiel.
 ```bash
 .venv/bin/python src/campagne.py reglage [--temps 120] [--jobs 6]            # -> results/reglage/synthese.csv
 .venv/bin/python src/campagne.py finale  [--graines 1 2 3 4 5] [--jobs 6]    # 15 instances A, 15 min chacune
-.venv/bin/python src/campagne.py plne    [--jobs 1] [--memoire 8]            # PLNE, départ : meilleur recuit
+.venv/bin/python src/campagne.py plne    [--jobs 1] [--memoire 8] [--coupes] # PLNE, départ : meilleur recuit
 ```
 
 La campagne finale (≈ 3 h 30 sur 6 cœurs) écrit `solutions/<instance>_metaheuristique_s<g>.txt`,

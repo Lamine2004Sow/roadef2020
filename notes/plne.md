@@ -104,8 +104,57 @@ les 8 cœurs, `MemLimit` 8 Go (15 Go de RAM sur la machine), MIP start : meilleu
   serre presque rien ; A_05, même nombre de scénarios, reste à 6,6 %.
 - Mémoire : aucune PLNE n'a atteint les 8 Go.
 
+## Coupes de quantile (`--coupes`)
+
+**Pourquoi la borne de A_02 est faible.** L'excès pèse plus que le risque moyen (obj2 = 4943 contre
+obj1 = 4401) mais, en relaxation, les `y[t,ω]` fractionnaires annulent presque les big-M : Q[t] n'est
+plus borné et la borne (2058) ne compte guère que la moyenne.
+
+**Essai abandonné : génération de contraintes sur les scénarios (CGen de Gouvine).** Modèle restreint
+à W_t ⊂ scénarios (au moins |W_t| − (S_t − k_t) sous Q[t] : relaxation valide), on ajoute les
+scénarios au-dessus de Q[t] et on recommence. Sur A_02, 9 scénarios par période : 272 s pour résoudre
+le modèle restreint à 1 %, borne 1624 ; 13 scénarios : 2054. Le goulot n'est pas le nombre de binaires
+mais le big-M, et les petits W_t donnent un rang de quantile trop bas.
+
+**Coupe retenue.** Au plus `S_t − k_t` scénarios dépassent Q[t] : tout ensemble W de `S_t − k_t + 1`
+scénarios en contient un sous Q[t], et comme chaque intervention n'a qu'une date de début :
+
+    Q[t] ≥ min_{ω∈W} r[t,ω] ≥ Σ_{i,s} ( min_{ω∈W} risk_i[t][s][ω] ) · x[i,s]
+
+Coupe linéaire, valide pour toute solution entière, sans binaire. Elle est forte quand les scénarios
+sont corrélés : sur la meilleure solution de A_02, avec W = ses 7 scénarios les plus hauts, elle
+retrouve 96 % de l'excès (4763 sur 4943).
+
+**Mise en œuvre** (`coupes`, `separer`, `callback_coupes` dans `src/Plne.py`) :
+1. relaxation linéaire sans `y` ni big-M (Q[t] borné par les seules coupes), coupes initiales tirées
+   de la solution de départ ;
+2. séparation : en chaque t, W = les `S_t − k_t + 1` scénarios les plus hauts de la solution relâchée ;
+   on ajoute la coupe si elle est violée, jusqu'à ce qu'aucune ne le soit (20 % du temps au plus) ;
+3. les coupes sont ajoutées à la PLNE complète (qui reste exacte), puis séparées à chaque nœud
+   (callback `cbCut`, `PreCrush = 1`). La borne retenue est la meilleure des deux.
+
+**Résultats sur A_02** (900 s, départ : meilleur recuit, checker officiel : réalisable)
+
+| | Borne | Solution | Gap certifié |
+|---|---|---|---|
+| Modèle seul | 2058,39 | 4672,13 (départ inchangé) | 55,94 % |
+| Relaxation + coupes (351 coupes, 8 s) | 4561,96 | – | – |
+| Coupes + PLNE, 300 s, sans coupes aux nœuds | 4574,58 | 4672,13 | 2,09 % |
+| Coupes + PLNE, 300 s, avec coupes aux nœuds | 4582,43 | 4672,13 | 1,92 % |
+| **Coupes + PLNE, 900 s** | **4610,21** | **4671,94** | **1,32 %** |
+
+- La borne passe de 44 % à 98,7 % de la meilleure solution ; elle certifie que la meilleure valeur du
+  challenge (4671,38) est à moins de 1,31 % de l'optimum.
+- La PLNE améliore aussi la solution (4672,13 → 4671,94, à 0,01 % de la référence), ce qu'elle ne
+  faisait pas sans les coupes.
+- Solution : `solutions/A_02_plne_coupes.txt` ; log : `results/logs/A_02_plne_coupes.log` ;
+  ligne `plne` / variante `coupes` dans `results.csv`. Le tableau garde la meilleure solution et la
+  meilleure borne des deux variantes (marquée †).
+
 ## À faire
 
 - [x] Modèle : variables de date de début, ressources, exclusions, linéarisation du quantile.
 - [x] Campagne au temps du challenge sur les 15 instances A (voir ci-dessus).
-- [ ] Piste d'amélioration de la borne : génération de contraintes sur les scénarios (Gouvine).
+- [x] Amélioration de la borne : coupes de quantile (`--coupes`, voir ci-dessous), testé sur A_02.
+- [ ] Coupes sur les autres instances au temps limite (A_05, A_08, A_11, A_13, A_14, A_15) :
+      `python src/campagne.py plne --coupes --instances A_05 A_08 A_11 A_13 A_14 A_15` (≈ 1 h 30).

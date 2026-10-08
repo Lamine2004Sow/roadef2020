@@ -5,7 +5,8 @@ Lit results/results.csv et results/best_known.csv ; écrit results/tableau.csv e
 Une ligne par instance A, en deux blocs : instances hors réglage, puis instances de réglage du recuit.
     glouton : exécution la plus récente
     recuit  : recuit+descente de la campagne finale (graines, sans variante), moyenne ± écart-type et meilleure
-    PLNE    : exécution la plus récente ; borne inférieure et gap certifiés par Gurobi
+    PLNE    : exécution la plus récente de chaque variante (modèle seul, avec coupes de quantile) ;
+              meilleure solution et meilleure borne des variantes, toutes deux certifiées, d'où le gap
 """
 import csv
 import os
@@ -16,7 +17,7 @@ from logger import RESULTS_DIR, read_csv
 
 COLONNES = ['instance', 'reglage', 'reference', 'glouton', 'temps_glouton',
             'recuit_moyenne', 'recuit_ecart_type', 'recuit_meilleur', 'recuit_pire', 'recuit_realisables', 'recuit_graines',
-            'plne', 'plne_borne', 'plne_gap', 'temps_plne',
+            'plne', 'plne_borne', 'plne_gap', 'temps_plne', 'plne_coupes',
             'ecart_glouton', 'ecart_recuit_moyenne', 'ecart_recuit_meilleur', 'ecart_recuit_pire', 'ecart_plne']
 
 
@@ -30,13 +31,19 @@ def lignes() -> list:
     dernier = {}  # (instance, méthode) -> exécution la plus récente (results.csv est chronologique)
     recuit = {}
     for r in rows:
-        if r['methode'] in ('glouton', 'plne'):
+        if r['methode'] == 'glouton':
             dernier[r['instance'], r['methode']] = r
+        elif r['methode'] == 'plne':
+            dernier[r['instance'], 'plne', r['variante'] or ''] = r
         elif r['methode'] == 'recuit+descente' and r['graine'] != '' and not r['variante']:
             recuit.setdefault(r['instance'], []).append(r)
     out = []
     for inst in sorted(ref):
-        g, p = dernier.get((inst, 'glouton')), dernier.get((inst, 'plne'))
+        g = dernier.get((inst, 'glouton'))
+        variantes = [r for (i, m, *_), r in dernier.items() if i == inst and m == 'plne']
+        ok_p = [r for r in variantes if r['realisable'] == 1]
+        p_sol = min(ok_p, key=lambda r: r['objectif']) if ok_p else None
+        p_borne = max(variantes, key=lambda r: r['borne']) if variantes else None
         rec = recuit.get(inst, [])
         ok = [r['objectif'] for r in rec if r['realisable'] == 1]
         l = {'instance': inst, 'reglage': int(inst in INSTANCES_REGLAGE), 'reference': ref[inst],
@@ -46,9 +53,13 @@ def lignes() -> list:
              'recuit_ecart_type': statistics.stdev(ok) if len(ok) > 1 else (0.0 if ok else None),
              'recuit_meilleur': min(ok) if ok else None, 'recuit_pire': max(ok) if ok else None,
              'recuit_realisables': len(ok), 'recuit_graines': len(rec),
-             'plne': p['objectif'] if p and p['realisable'] == 1 else None,
-             'plne_borne': p['borne'] if p else None, 'plne_gap': 100 * p['gap'] if p else None,
-             'temps_plne': p['temps'] if p else None}
+             'plne': p_sol['objectif'] if p_sol else None,
+             'plne_borne': p_borne['borne'] if p_borne else None,
+             'plne_gap': None if not (p_sol and p_borne) else
+             0.0 if min(r['gap'] for r in variantes) < 1e-9 else
+             max(0.0, 100 * (p_sol['objectif'] - p_borne['borne']) / abs(p_sol['objectif'])),
+             'temps_plne': p_borne['temps'] if p_borne else None,
+             'plne_coupes': int(bool(p_borne) and p_borne['variante'] == 'coupes')}
         for k in ('glouton', 'recuit_moyenne', 'recuit_meilleur', 'recuit_pire', 'plne'):
             l[f'ecart_{k}'] = ecart(l[k], ref[inst])
         out.append(l)
@@ -106,7 +117,8 @@ def bloc(titre: str, ls: list) -> list:
         md.append(f'| {l["instance"]} | {nombre(l["reference"])} '
                   f'| {avec_ecart(l["glouton"], l["ecart_glouton"])} | {moy} '
                   f'| {avec_ecart(l["recuit_meilleur"], l["ecart_recuit_meilleur"])} '
-                  f'| {avec_ecart(l["plne"], l["ecart_plne"])} | {nombre(l["plne_borne"])} | {gap(l)} '
+                  f'| {avec_ecart(l["plne"], l["ecart_plne"])} | {nombre(l["plne_borne"])}{" †" if l["plne_coupes"] else ""} '
+                  f'| {gap(l)} '
                   f'| {temps(l["temps_glouton"])} | {temps(l["temps_plne"])} |')
     md.append(f'| **Moyenne** | | {moyenne(ls, "ecart_glouton")} | {moyenne(ls, "ecart_recuit_moyenne")} '
               f'| {moyenne(ls, "ecart_recuit_meilleur")} | {moyenne(ls, "ecart_plne")} | '
@@ -123,7 +135,8 @@ def markdown(ls: list) -> str:
     md = ['<!-- Généré par python src/tableau.py : ne pas modifier à la main -->', '',
           'Écart (%) à la référence (meilleure valeur de la qualification du challenge) entre parenthèses ; '
           'en gras : référence atteinte (écart < 0,001 %). Gap certifié : (PLNE − borne) / PLNE, '
-          'calculé par Gurobi. Recuit et PLNE : `ComputationTime` du challenge (15 min).', '']
+          'calculé par Gurobi ; † : borne obtenue avec les coupes de quantile (`--coupes`, voir `notes/plne.md`). '
+          'Recuit et PLNE : `ComputationTime` du challenge (15 min) ; temps PLNE : celui de la meilleure borne.', '']
     md += bloc('Instances hors réglage', test)
     md += bloc('Instances de réglage du recuit', reglage)
     md += [f'- Recuit : {real}/{graines} exécutions réalisables (checker officiel).',

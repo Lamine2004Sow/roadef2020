@@ -7,10 +7,11 @@ Usage :
     python src/campagne.py finale [--param nom=valeur ...] [--graines 1 2 3 4 5] [--jobs 6]
         toutes les instances A avec le temps du challenge (ComputationTime) ;
         résultats dans results/, solutions dans solutions/<instance>_metaheuristique_s<g>.txt
-    python src/campagne.py plne [--temps S] [--jobs 1] [--threads 0] [--memoire 8] [--instances A_07 ...]
+    python src/campagne.py plne [--temps S] [--jobs 1] [--threads 0] [--memoire 8] [--coupes] [--instances A_07 ...]
         PLNE sur les instances A (temps du challenge par défaut), une à la fois par défaut,
         en partant de la meilleure solution réalisable du recuit (MIP start) ;
-        solutions dans solutions/<instance>_plne.txt, logs dans results/logs/<instance>_plne.log
+        solutions dans solutions/<instance>_plne.txt, logs dans results/logs/<instance>_plne.log ;
+        --coupes : coupes de quantile (solutions et logs suffixés _coupes)
 """
 import argparse
 import csv
@@ -143,13 +144,16 @@ def meilleur_recuit(inst: str):
     return None
 
 
-def plne(instances: list, temps: float, jobs: int, threads: int, memoire: float):
+def plne(instances: list, temps: float, jobs: int, threads: int, memoire: float, avec_coupes: bool = False):
     logs = os.path.join(RESULTS_DIR, 'logs')
     os.makedirs(logs, exist_ok=True)
     taches = []
     for inst in instances:
-        sol = os.path.join(ROOT, 'solutions', f'{inst}_plne.txt')
+        nom = f'{inst}_plne' + ('_coupes' if avec_coupes else '')
+        sol = os.path.join(ROOT, 'solutions', f'{nom}.txt')
         cmd = [PYTHON, 'src/Plne.py', instance_path(inst), sol, '--threads', str(threads)]
+        if avec_coupes:
+            cmd += ['--coupes']
         if temps:
             cmd += ['--temps', str(temps)]
         if memoire:
@@ -160,7 +164,7 @@ def plne(instances: list, temps: float, jobs: int, threads: int, memoire: float)
         print(f'{inst} : départ {os.path.basename(depart) if depart else "aucun"}')
         cmd = ['sh', '-c', ' '.join(f"'{a}'" for a in cmd)
                + f" && '{PYTHON}' RTE_ChallengeROADEF2020_checker.py '{instance_path(inst)}' '{sol}'"]
-        taches.append((cmd, os.path.join(logs, f'{inst}_plne.log')))
+        taches.append((cmd, os.path.join(logs, f'{nom}.log')))
     print(f'{len(taches)} PLNE, {jobs} à la fois, {threads or "tous les"} cœurs chacune')
     executer(taches, jobs)
 
@@ -200,12 +204,13 @@ def main():
     p.add_argument('--jobs', type=int, default=1, help='PLNE simultanées')
     p.add_argument('--threads', type=int, default=0, help='cœurs par PLNE (0 : tous)')
     p.add_argument('--memoire', type=float, default=8, help='mémoire max de Gurobi en Go')
+    p.add_argument('--coupes', action='store_true', help='coupes de quantile (voir notes/plne.md)')
     p.add_argument('--instances', nargs='+', default=ORDRE_PLNE)
     args = parser.parse_args()
     if args.campagne == 'reglage':
         reglage(args.temps, args.jobs)
     elif args.campagne == 'plne':
-        plne(args.instances, args.temps, args.jobs, args.threads, args.memoire)
+        plne(args.instances, args.temps, args.jobs, args.threads, args.memoire, args.coupes)
     else:
         params = {}
         for p in args.param:
