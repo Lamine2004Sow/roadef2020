@@ -1,6 +1,7 @@
 """PLNE complète avec Gurobi (voir notes/plne.md).
 
 Usage : python src/Plne.py <instance.json> <solution.txt> [--temps S] [--depart solution.txt] [--threads N]
+                                                  [--memoire GO]
 Temps limite par défaut : ComputationTime de l'instance (en minutes).
 `--depart` fournit une solution de départ (par exemple la meilleure du recuit) comme MIP start.
 
@@ -165,6 +166,7 @@ def main():
     parser.add_argument('--temps', type=float, help='temps limite de résolution en secondes')
     parser.add_argument('--depart', help='solution de départ (MIP start)')
     parser.add_argument('--threads', type=int, default=0, help='0 : tous les cœurs')
+    parser.add_argument('--memoire', type=float, help='mémoire max de Gurobi en Go (arrêt propre au-delà)')
     args = parser.parse_args()
 
     env = gurobi_env()
@@ -187,6 +189,8 @@ def main():
     m.Params.TimeLimit = max(1.0, limite - t_construction)
     m.Params.Threads = args.threads
     m.Params.MIPGap = 0.0  # optimum exact quand il est atteint (défaut Gurobi : 0,01 %)
+    if args.memoire:
+        m.Params.MemLimit = args.memoire  # statut MEM_LIMIT, garde la meilleure solution trouvée
     m.optimize()
     temps = time.time() - t0
 

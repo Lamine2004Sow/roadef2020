@@ -1,4 +1,4 @@
-"""Campagnes d'exécution du recuit (voir notes/meta_heuristique.md, section « Réglage »).
+"""Campagnes d'exécution du recuit et de la PLNE (voir notes/meta_heuristique.md et notes/plne.md).
 
 Usage :
     python src/campagne.py reglage [--temps 120] [--jobs 6]
@@ -7,6 +7,10 @@ Usage :
     python src/campagne.py finale [--param nom=valeur ...] [--graines 1 2 3 4 5] [--jobs 6]
         toutes les instances A avec le temps du challenge (ComputationTime) ;
         résultats dans results/, solutions dans solutions/<instance>_metaheuristique_s<g>.txt
+    python src/campagne.py plne [--temps S] [--jobs 1] [--threads 0] [--memoire 12] [--instances A_07 ...]
+        PLNE sur les instances A (temps du challenge par défaut), une à la fois par défaut,
+        en partant de la meilleure solution réalisable du recuit (MIP start) ;
+        solutions dans solutions/<instance>_plne.txt, logs dans results/logs/<instance>_plne.log
 """
 import argparse
 import csv
@@ -120,6 +124,47 @@ def synthese(dossier: str):
               + ''.join(f'{l[f"ecart_{i}"]:>8.3f}%' for i in INSTANCES_REGLAGE))
 
 
+# ---------------------------------------------------------------------- plne
+
+# Plus petits modèles d'abord : leurs résultats sont acquis même si une grosse instance échoue
+ORDRE_PLNE = ['A_07', 'A_09', 'A_12', 'A_10', 'A_08', 'A_11', 'A_03', 'A_14', 'A_15',
+              'A_01', 'A_13', 'A_06', 'A_02', 'A_04', 'A_05']
+
+
+def meilleur_recuit(inst: str):
+    """Solution réalisable de la campagne finale avec le meilleur objectif, ou None."""
+    rows = [r for r in read_csv(os.path.join(RESULTS_DIR, 'results.csv'))
+            if r['instance'] == inst and r['methode'] == 'recuit+descente' and r['realisable'] == 1
+            and r['graine'] != '' and not r['variante']]
+    for r in sorted(rows, key=lambda r: r['objectif']):
+        sol = os.path.join(ROOT, 'solutions', f'{inst}_metaheuristique_s{int(r["graine"])}.txt')
+        if os.path.exists(sol):
+            return sol
+    return None
+
+
+def plne(instances: list, temps: float, jobs: int, threads: int, memoire: float):
+    logs = os.path.join(RESULTS_DIR, 'logs')
+    os.makedirs(logs, exist_ok=True)
+    taches = []
+    for inst in instances:
+        sol = os.path.join(ROOT, 'solutions', f'{inst}_plne.txt')
+        cmd = [PYTHON, 'src/Plne.py', instance_path(inst), sol, '--threads', str(threads)]
+        if temps:
+            cmd += ['--temps', str(temps)]
+        if memoire:
+            cmd += ['--memoire', str(memoire)]
+        depart = meilleur_recuit(inst)
+        if depart:
+            cmd += ['--depart', depart]
+        print(f'{inst} : départ {os.path.basename(depart) if depart else "aucun"}')
+        cmd = ['sh', '-c', ' '.join(f"'{a}'" for a in cmd)
+               + f" && '{PYTHON}' RTE_ChallengeROADEF2020_checker.py '{instance_path(inst)}' '{sol}'"]
+        taches.append((cmd, os.path.join(logs, f'{inst}_plne.log')))
+    print(f'{len(taches)} PLNE, {jobs} à la fois, {threads or "tous les"} cœurs chacune')
+    executer(taches, jobs)
+
+
 # -------------------------------------------------------------------- finale
 
 def finale(params: dict, graines: list, jobs: int):
@@ -150,9 +195,17 @@ def main():
     f.add_argument('--param', action='append', default=[], metavar='NOM=VALEUR')
     f.add_argument('--graines', type=int, nargs='+', default=[1, 2, 3, 4, 5])
     f.add_argument('--jobs', type=int, default=6)
+    p = sub.add_parser('plne')
+    p.add_argument('--temps', type=float, help='secondes (défaut : ComputationTime)')
+    p.add_argument('--jobs', type=int, default=1, help='PLNE simultanées')
+    p.add_argument('--threads', type=int, default=0, help='cœurs par PLNE (0 : tous)')
+    p.add_argument('--memoire', type=float, default=12, help='mémoire max de Gurobi en Go')
+    p.add_argument('--instances', nargs='+', default=ORDRE_PLNE)
     args = parser.parse_args()
     if args.campagne == 'reglage':
         reglage(args.temps, args.jobs)
+    elif args.campagne == 'plne':
+        plne(args.instances, args.temps, args.jobs, args.threads, args.memoire)
     else:
         params = {}
         for p in args.param:

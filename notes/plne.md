@@ -72,6 +72,7 @@ Toutes les solutions ont été vérifiées par le checker officiel (objectif ide
 ## À faire
 
 - [x] Modèle : variables de date de début, ressources, exclusions, linéarisation du quantile.
-- [ ] Campagne au temps du challenge sur les 15 instances A (mémoire : non-zéros ≈ Σ_{i,s} Δ·S_t,
-      à surveiller sur A_02, A_04, A_05).
+- [ ] Campagne au temps du challenge sur les 15 instances A : `python src/campagne.py plne`
+      (une PLNE à la fois sur tous les cœurs, ≈ 4 h ; plus petits modèles d'abord ; départ : meilleure
+      graine du recuit ; `MemLimit` 12 Go car non-zéros ≈ Σ_{i,s} Δ·S_t, à surveiller sur A_02, A_04, A_05).
 - [ ] Piste d'amélioration de la borne : génération de contraintes sur les scénarios (Gouvine).
