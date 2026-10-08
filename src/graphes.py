@@ -185,15 +185,20 @@ def convergence(fichiers: list):
     fichiers = fichiers[:4]
     if not fichiers:
         return
-    fig, axes = plt.subplots(1, len(fichiers), figsize=(4.5 * len(fichiers), 3.6), squeeze=False)
-    for ax, f in zip(axes[0], fichiers):
+    # Grille 2 × 2 au-delà de deux exécutions : lisible une fois imprimée
+    lignes, colonnes = (2, 2) if len(fichiers) > 2 else (1, len(fichiers))
+    fig, axes = plt.subplots(lignes, colonnes, figsize=(4.5 * colonnes, 3.4 * lignes), squeeze=False)
+    for ax in axes.flat[len(fichiers):]:
+        ax.set_visible(False)
+    for ax, f in zip(axes.flat, fichiers):
         rows = read_csv(f)
         t = [r['temps'] for r in rows]
         ax.plot(t, [r['cout_courant'] for r in rows], color=BASELINE, linewidth=1, label='coût courant')
         ax.plot(t, [r['meilleur_cout'] for r in rows], color=CATEGORICAL[0], label='meilleur coût')
         ax.set_title(os.path.splitext(os.path.basename(f))[0], fontsize=10)
         ax.set_xlabel('temps (s)')
-    axes[0][0].set_ylabel('coût pénalisé')
+    for ax in axes[:, 0]:
+        ax.set_ylabel('coût pénalisé')
     axes[0][0].legend()
     fig.suptitle('Convergence du recuit', x=0.01, ha='left', fontweight='bold')
     sauver(fig, '4_convergence')
@@ -345,8 +350,9 @@ def profil_performance(ls: list):
     ax.set_ylabel('part des instances')
     ax.set_title(f'Profil de performance — {n} instances hors réglage')
     # La PLNE part de la meilleure graine (MIP start) : elle ne peut pas faire moins bien
-    ax.annotate('PLNE partie de la meilleure graine du recuit', (1, 1), xycoords='axes fraction',
-                ha='right', va='bottom', fontsize=8, color=MUTED)
+    # Dans le cadre, en haut à gauche, zone libre (au-dessus du cadre, elle chevauchait le titre)
+    ax.annotate('PLNE partie de la meilleure graine du recuit', (0.02, 0.93), xycoords='axes fraction',
+                ha='left', va='top', fontsize=8, color=MUTED)
     ax.legend(loc='lower right')
     sauver(fig, '13_profil_performance')
 
@@ -427,7 +433,8 @@ def main():
     rows = read_csv(os.path.join(RESULTS_DIR, 'results.csv'))
     conv = sorted(glob.glob(os.path.join(RESULTS_DIR, 'convergence', '*.csv')))
     print(f'Figures dans {FIG_DIR} :')
-    barres_ecart(rows, '1_methodes', 'Écart à la référence par méthode', ordre=METHODES)
+    barres_ecart(rows, '1_methodes', 'Écart à la référence par méthode',
+                 ordre=['glouton', 'recuit', 'recuit+descente', 'plne'])  # ordre du pipeline
     boites_graines(rows)
     qualite_temps(rows)
     convergence(conv)

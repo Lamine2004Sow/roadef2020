@@ -18,7 +18,7 @@ from logger import RESULTS_DIR, read_csv
 
 COLONNES = ['instance', 'reglage', 'reference', 'glouton', 'temps_glouton',
             'recuit_moyenne', 'recuit_ecart_type', 'recuit_meilleur', 'recuit_pire', 'recuit_realisables', 'recuit_graines',
-            'plne', 'plne_borne', 'plne_gap', 'temps_plne', 'plne_coupes',
+            'plne', 'plne_borne', 'plne_gap', 'temps_plne', 'plne_coupes', 'plne_sol_coupes',
             'ecart_glouton', 'ecart_recuit_moyenne', 'ecart_recuit_meilleur', 'ecart_recuit_pire', 'ecart_plne']
 
 
@@ -60,7 +60,8 @@ def lignes() -> list:
              0.0 if min(r['gap'] for r in variantes) < 1e-9 else
              max(0.0, 100 * (p_sol['objectif'] - p_borne['borne']) / abs(p_sol['objectif'])),
              'temps_plne': p_borne['temps'] if p_borne else None,
-             'plne_coupes': int(bool(p_borne) and p_borne['variante'] == 'coupes')}
+             'plne_coupes': int(bool(p_borne) and p_borne['variante'] == 'coupes'),
+             'plne_sol_coupes': int(bool(p_sol) and p_sol['variante'] == 'coupes')}
         for k in ('glouton', 'recuit_moyenne', 'recuit_meilleur', 'recuit_pire', 'plne'):
             l[f'ecart_{k}'] = ecart(l[k], ref[inst])
         out.append(l)
@@ -118,7 +119,7 @@ def bloc(titre: str, ls: list) -> list:
         md.append(f'| {l["instance"]} | {nombre(l["reference"])} '
                   f'| {avec_ecart(l["glouton"], l["ecart_glouton"])} | {moy} '
                   f'| {avec_ecart(l["recuit_meilleur"], l["ecart_recuit_meilleur"])} '
-                  f'| {avec_ecart(l["plne"], l["ecart_plne"])} | {nombre(l["plne_borne"])}{" †" if l["plne_coupes"] else ""} '
+                  f'| {avec_ecart(l["plne"], l["ecart_plne"])}{" †" if l["plne_sol_coupes"] else ""} | {nombre(l["plne_borne"])}{" †" if l["plne_coupes"] else ""} '
                   f'| {gap(l)} '
                   f'| {temps(l["temps_glouton"])} | {temps(l["temps_plne"])} |')
     md.append(f'| **Moyenne** | | {moyenne(ls, "ecart_glouton")} | {moyenne(ls, "ecart_recuit_moyenne")} '
@@ -147,13 +148,16 @@ def markdown(ls: list) -> str:
 
 # --------------------------------------------------------------------- LaTeX
 
-def tex_cellule(obj, e) -> str:
-    """Valeur et écart à la référence sur deux lignes ; en gras si la référence est atteinte."""
+def tex_cellule(obj, e, dague: bool = False) -> str:
+    """Valeur et écart à la référence sur deux lignes ; en gras si la référence est atteinte ;
+    `dague` : valeur issue d'une exécution avec coupes."""
     if obj is None:
         return '--'
     val, ec = nombre(obj), pourcent(e).replace('%', r'\%')
     if abs(e) < 1e-3:
         val = rf'\textbf{{{val}}}'
+    if dague:
+        val += r'$^\dagger$'
     return rf'\makecell{{{val}\\ \footnotesize({ec})}}'
 
 
@@ -167,7 +171,7 @@ def tex_bloc(titre: str, ls: list) -> list:
         tex.append(' & '.join([l['instance'].replace('_', r'\_'), nombre(l['reference']),
                                tex_cellule(l['glouton'], l['ecart_glouton']), moy,
                                tex_cellule(l['recuit_meilleur'], l['ecart_recuit_meilleur']),
-                               tex_cellule(l['plne'], l['ecart_plne']), borne,
+                               tex_cellule(l['plne'], l['ecart_plne'], l['plne_sol_coupes']), borne,
                                gap(l).replace('%', r'\%')]) + r' \\')
     tex.append(' & '.join([r'\textbf{Moyenne}', '', moyenne(ls, 'ecart_glouton'), moyenne(ls, 'ecart_recuit_moyenne'),
                            moyenne(ls, 'ecart_recuit_meilleur'), moyenne(ls, 'ecart_plne'), '',
