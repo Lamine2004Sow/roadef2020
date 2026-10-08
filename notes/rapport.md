@@ -148,10 +148,12 @@ départ), métaheuristique meilleur compromis, PLNE référence exacte sur les p
 - [x] `src/logger.py` : écriture de `results.csv` et des fichiers de convergence.
 - [x] `src/graphes.py` : génération des graphes (matplotlib) depuis `results/`.
 - [x] Brancher `Convergence` et `log_result` dans le recuit (méthodes `recuit` et `recuit+descente`, graines).
-- [ ] Récupérer les meilleures solutions connues du challenge (pour l'écart en %).
+- [x] Récupérer les meilleures solutions connues du challenge : `results/best_known.csv`
+  (qualification, 15 min, [roadef.org](https://roadef.org/challenge/2020/en/qualifresult.php)).
 - [ ] Colonne `taille` dans `instances.csv` (+ recalcul des instances déjà enregistrées).
 - [ ] Graphes 12a, 12b (taille) et 13 (profil de performance).
 - [ ] Colonnes PLNE dans `results.csv` : borne inférieure et gap.
 - [x] Choisir le sous-ensemble d'instances de réglage : A_06, A_09, A_13 (voir `notes/meta_heuristique.md`).
-  Elles restent dans la campagne finale : à signaler ou à présenter à part.
+  Elles restent dans la campagne finale : tableaux séparés dans `notes/meta_heuristique.md`,
+  marquées d'un * dans les graphes 1, 2 et 8.
 - [x] Campagne finale du recuit : 15 instances A × 5 graines au temps du challenge (`src/campagne.py`).

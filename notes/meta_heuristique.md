@@ -148,24 +148,43 @@ Validation des meilleures combinaisons (4 graines, 100 à 103, 120 s), objectif 
 6 exécutions en parallèle sur 8 cœurs. **75/75 réalisables** selon le checker officiel, dont l'objectif
 coïncide avec `Evaluation` (écart max 3·10⁻⁹). Solutions : `solutions/<instance>_metaheuristique_s<g>.txt`.
 
-| Instance | Glouton | Meilleur | Moyenne ± écart-type | Gain (meilleur) |
-|---|---|---|---|---|
-| A_01 | 1807,83 | 1769,24 | 1769,81 ± 0,73 | −2,1 % |
-| A_02 | 4685,07 | 4672,13 | 4673,54 ± 1,09 | −0,3 % |
-| A_03 | 850,80 | 848,18 | 849,67 ± 1,32 | −0,3 % |
-| A_04 | 2173,63 | 2093,37 | 2103,37 ± 6,20 | −3,7 % |
-| A_05 | 639,87 | 635,37 | 636,01 ± 0,53 | −0,7 % |
-| A_06 | 641,15 | 594,69 | 601,23 ± 7,31 | −7,2 % |
-| A_07 | 2272,78 | 2272,78 | 2272,78 ± 0 | 0 |
-| A_08 | 745,83 | 744,29 | 744,29 ± 0 | −0,2 % |
-| A_09 | 1586,19 | 1507,28 | 1507,28 ± 0 | −5,0 % |
-| A_10 | 2997,25 | 2994,85 | 2994,97 ± 0,16 | −0,1 % |
-| A_11 | 501,62 | 495,27 | 495,44 ± 0,20 | −1,3 % |
-| A_12 | 792,00 | 789,63 | 789,73 ± 0,18 | −0,3 % |
-| A_13 | 2012,72 | 1999,00 | 2000,53 ± 1,35 | −0,7 % |
-| A_14 | 2537,23 | 2312,69 | 2321,53 ± 9,13 | −8,9 % |
-| A_15 | 2547,18 | 2314,94 | 2323,28 ± 17,03 | −9,1 % |
+Référence : meilleure valeur trouvée pendant la qualification du challenge (15 min), relevée sur
+[roadef.org](https://roadef.org/challenge/2020/en/qualifresult.php) → `results/best_known.csv`.
+Écarts (%) à cette référence. A_06, A_09 et A_13 ont servi au réglage : ils sont présentés à part.
 
-- Gains les plus forts sur A_14 et A_15 (−9 %), où le glouton devait réparer des violations.
+**Instances hors réglage (12)**
+
+| Instance | Référence | Glouton | Meilleur | Moyenne ± écart-type | Écart glouton | Écart meilleur | Écart moyen |
+|---|---|---|---|---|---|---|---|
+| A_01 | 1767,82 | 1807,83 | 1769,24 | 1769,81 ± 0,73 | 2,26 % | 0,08 % | 0,11 % |
+| A_02 | 4671,38 | 4685,07 | 4672,13 | 4673,54 ± 1,09 | 0,29 % | 0,02 % | 0,05 % |
+| A_03 | 848,18 | 850,80 | **848,18** | 849,67 ± 1,32 | 0,31 % | 0 | 0,18 % |
+| A_04 | 2085,88 | 2173,63 | 2093,37 | 2103,37 ± 6,20 | 4,21 % | 0,36 % | 0,84 % |
+| A_05 | 635,22 | 639,87 | 635,37 | 636,01 ± 0,53 | 0,73 % | 0,02 % | 0,12 % |
+| A_07 | 2272,78 | **2272,78** | **2272,78** | 2272,78 ± 0 | 0 | 0 | 0 |
+| A_08 | 744,29 | 745,83 | **744,29** | 744,29 ± 0 | 0,21 % | 0 | 0 |
+| A_10 | 2994,85 | 2997,25 | **2994,85** | 2994,97 ± 0,16 | 0,08 % | 0 | 0,004 % |
+| A_11 | 495,26 | 501,62 | 495,27 | 495,44 ± 0,20 | 1,29 % | 0,003 % | 0,04 % |
+| A_12 | 789,63 | 792,00 | **789,63** | 789,73 ± 0,18 | 0,30 % | 0 | 0,01 % |
+| A_14 | 2264,12 | 2537,23 | 2312,69 | 2321,53 ± 9,13 | 12,06 % | 2,15 % | 2,54 % |
+| A_15 | 2268,57 | 2547,18 | 2314,94 | 2323,28 ± 17,03 | 12,28 % | 2,04 % | 2,41 % |
+| **Moyenne** | | | | | 2,83 % | 0,39 % | 0,53 % |
+
+**Instances de réglage (3)**
+
+| Instance | Référence | Glouton | Meilleur | Moyenne ± écart-type | Écart glouton | Écart meilleur | Écart moyen |
+|---|---|---|---|---|---|---|---|
+| A_06 | 590,62 | 641,15 | 594,69 | 601,23 ± 7,31 | 8,55 % | 0,69 % | 1,80 % |
+| A_09 | 1507,28 | 1586,19 | **1507,28** | 1507,28 ± 0 | 5,23 % | 0 | 0 |
+| A_13 | 1998,66 | 2012,72 | 1999,00 | 2000,53 ± 1,35 | 0,70 % | 0,02 % | 0,09 % |
+| **Moyenne** | | | | | 4,83 % | 0,24 % | 0,63 % |
+
+En gras : référence atteinte (écart < 0,001 %).
+
+- Référence atteinte sur 6 instances (A_03, A_07, A_08, A_09, A_10, A_12), à moins de 0,1 % sur 5 autres.
+- Hors réglage, l'écart moyen passe de 2,83 % (glouton) à 0,53 % (moyenne des graines) : le réglage
+  n'a pas favorisé ses propres instances (0,63 %), cohérent avec le choix des valeurs par défaut.
+- Points faibles : A_14 et A_15 (≈ 2 %), où le glouton partait de 12 % ; A_04 et A_06, les plus dispersés.
+- Gains sur le glouton les plus forts sur A_14 et A_15 (−9 %), où le glouton devait réparer des violations.
 - Petites instances (A_07 à A_09) : même résultat pour toutes les graines.
 - A_04, A_06, A_14, A_15 : écart-type de 6 à 17, plusieurs graines utiles.

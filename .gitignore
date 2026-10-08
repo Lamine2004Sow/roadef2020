@@ -232,3 +232,5 @@ CLAUDE.md
 results/convergence/
 results/reglage/*
 !results/reglage/synthese.csv
+# Contexte de session de l assistant (non versionné)
+CONTEXT.md

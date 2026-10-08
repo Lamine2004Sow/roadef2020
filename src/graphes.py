@@ -13,6 +13,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
+from campagne import INSTANCES_REGLAGE
 from evaluation import Evaluation
 from logger import RESULTS_DIR, instance_name, read_csv
 from reader import read_instance, read_solution, duration
@@ -90,6 +91,14 @@ def ecart(obj: float, ref: float) -> float:
     return 100.0 * (obj - ref) / ref if ref else 0.0
 
 
+def etiquettes(ax, instances: list):
+    """Noms d'instances en abscisse ; * sur celles qui ont servi au réglage du recuit."""
+    if any(i in INSTANCES_REGLAGE for i in instances):
+        ax.annotate('* instance de réglage des paramètres', (1, 1), xycoords='axes fraction',
+                    ha='right', va='bottom', fontsize=8, color=MUTED)
+    return [f'{i}*' if i in INSTANCES_REGLAGE else i for i in instances]
+
+
 # ------------------------------------------------------- comparer méthodes
 
 def barres_ecart(rows: list, nom: str, titre: str, cle: str = 'methode', ordre: list = None):
@@ -116,7 +125,8 @@ def barres_ecart(rows: list, nom: str, titre: str, cle: str = 'methode', ordre: 
             if v == 0:
                 ax.annotate('réf.', (xi, 0), xytext=(0, 3), textcoords='offset points',
                             ha='center', va='bottom', fontsize=7, color=INK_2)
-    ax.set_xticks(x, instances, rotation=45 if len(instances) > 8 else 0)
+    noms = etiquettes(ax, instances) if cle == 'methode' else instances
+    ax.set_xticks(x, noms, rotation=45 if len(instances) > 8 else 0)
     ax.set_ylabel('écart à la référence (%)')
     ax.set_title(titre)
     ax.grid(axis='x', visible=False)
@@ -138,7 +148,7 @@ def boites_graines(rows: list, methode: str = 'recuit+descente'):
     instances = sorted(par_instance)
     data = [[ecart(v, ref[i]) for v in par_instance[i]] for i in instances]
     fig, ax = plt.subplots(figsize=(max(6, 0.7 * len(instances)), 4))
-    ax.boxplot(data, tick_labels=instances, widths=0.5, patch_artist=True,
+    ax.boxplot(data, tick_labels=etiquettes(ax, instances), widths=0.5, patch_artist=True,
                boxprops=dict(facecolor=couleur(methode), edgecolor=couleur(methode), alpha=0.35),
                medianprops=dict(color=couleur(methode), linewidth=2),
                whiskerprops=dict(color=MUTED), capprops=dict(color=MUTED),
