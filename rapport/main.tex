@@ -1,4 +1,4 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[11pt,a4paper]{report}
 
 % ------------------------------------------------------------------ paquets
 \usepackage[utf8]{inputenc}
@@ -6,7 +6,7 @@
 \usepackage[french]{babel}
 \usepackage{lmodern}
 \usepackage{microtype}
-\usepackage[margin=2.4cm]{geometry}
+\usepackage[margin=2.4cm, headheight=14pt]{geometry}
 \usepackage{amsmath, amssymb}
 \usepackage{icomma}
 \usepackage{graphicx}
@@ -17,6 +17,8 @@
 \usepackage{enumitem}
 \usepackage{xcolor}
 \usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{tocloft}
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
 \usepackage[hidelinks]{hyperref}
@@ -43,15 +45,41 @@
 \algrenewcommand\algorithmicrepeat{\textbf{répéter}}
 \algrenewcommand\algorithmicuntil{\textbf{jusqu'à}}
 
+% ------------------------------------------------------------ titres
+% Chapitres : numéro et titre sur une ligne, filet bleu dessous
+\titleformat{\chapter}[block]
+  {\normalfont\huge\bfseries\color{BleuFonce}}{\thechapter}{0.6em}{}[\vspace{0.3em}{\color{BleuFonce}\titlerule[1.2pt]}]
+\titlespacing*{\chapter}{0pt}{0pt}{1.6em}
+% Sections bien séparées du texte qui précède
+\titleformat{\section}{\normalfont\Large\bfseries\color{BleuFonce}}{\thesection}{0.6em}{}
+\titlespacing*{\section}{0pt}{2.2em plus 0.5em}{0.8em}
+\titleformat{\subsection}{\normalfont\large\bfseries}{\thesubsection}{0.6em}{}
+\titlespacing*{\subsection}{0pt}{1.4em plus 0.3em}{0.5em}
+
+% ------------------------------------------------- table des matières (une page)
+\setcounter{tocdepth}{1}
+\setlength{\cftbeforetoctitleskip}{0pt}
+\setlength{\cftaftertoctitleskip}{1em}
+\setlength{\cftbeforechapskip}{0.45em}
+\setlength{\cftbeforesecskip}{0pt}
+\renewcommand{\cftsecfont}{\small}
+\renewcommand{\cftsecpagefont}{\small}
+\renewcommand{\cftchapfont}{\bfseries\color{BleuFonce}}
+\renewcommand{\cftchappagefont}{\bfseries\color{BleuFonce}}
+\renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}}
+\renewcommand{\cfttoctitlefont}{\huge\bfseries\color{BleuFonce}}
+
 % ------------------------------------------------------------ mise en page
 \setlength{\parskip}{0.4em}
 \setlist{itemsep=0.15em, topsep=0.3em}
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\small\textcolor{GrisMoyen}{Challenge ROADEF/EURO 2020 --- RTE}}
-\fancyhead[R]{\small\textcolor{GrisMoyen}{\leftmark}}
+\fancyhead[R]{\small\textcolor{GrisMoyen}{\nouppercase{\leftmark}}}
 \fancyfoot[C]{\small\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\small\thepage}\renewcommand{\headrulewidth}{0pt}}
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ #1}{}}
 
 \newcommand{\I}{\mathcal{I}}
 \newcommand{\Sd}{\mathcal{S}}
@@ -92,6 +120,7 @@
 \end{titlepage}
 
 % ================================================================= résumé
+\pagenumbering{roman}
 \begin{abstract}
 Le challenge ROADEF/EURO 2020, proposé par RTE, consiste à planifier les interventions de
 maintenance du réseau de transport d'électricité en minimisant un risque incertain, décrit par des
@@ -108,41 +137,98 @@ inférieure sur les autres ; les coupes de quantile ramènent le gap certifié d
 \end{abstract}
 
 \tableofcontents
-\newpage
 
 % =========================================================== introduction
-\section{Introduction}
+\cleardoublepage\pagenumbering{arabic}
+\chapter{Introduction}\label{chap:introduction}
 
-RTE, gestionnaire du réseau français de transport d'électricité, doit planifier chaque année de
-nombreuses interventions de maintenance sur ses lignes et postes. Une ligne en maintenance est
-indisponible : le réseau devient plus fragile, et ce risque dépend de la date choisie (charge,
-météo, autres indisponibilités). Le challenge ROADEF/EURO 2020~\cite{sujet} formalise ce problème :
-choisir la date de début de chaque intervention pour minimiser un risque décrit par des scénarios,
-en respectant des ressources (équipes) et des incompatibilités entre interventions.
+\section{Contexte}
 
-Ce rapport présente trois méthodes de résolution, de la plus rapide à la plus exacte :
-\begin{enumerate}
-  \item un \textbf{glouton} qui place les interventions de la plus difficile à la plus facile, suivi
-        d'une réparation des contraintes violées (section~\ref{sec:glouton}) ;
-  \item un \textbf{recuit simulé} suivi d'une descente, qui améliore la solution du glouton dans le
-        temps du challenge (section~\ref{sec:recuit}) ;
-  \item une \textbf{PLNE} complète, résolue par Gurobi, qui donne une solution et une borne
-        inférieure, donc un écart prouvé à l'optimum, renforcée par des coupes sur le quantile
-        (section~\ref{sec:plne}).
+RTE (Réseau de Transport d'Électricité) exploite le réseau à haute et très haute tension qui achemine
+l'électricité des centrales vers les grands consommateurs et les réseaux de distribution. Pour rester
+sûr, ce réseau doit être entretenu en permanence : remplacement de matériels vieillissants,
+renforcement de lignes, raccordement de nouvelles installations de production. Chacune de ces
+\emph{interventions} immobilise un ouvrage pendant plusieurs jours ou semaines.
+
+Une ligne en travaux ne transporte plus d'électricité. Pendant ce temps, le réseau dispose de moins
+de marges pour absorber un aléa, comme une panne ou un pic de consommation : il est plus vulnérable.
+Ce \emph{risque} dépend fortement de la date de l'intervention. Une coupure en plein hiver, quand la
+consommation est forte, n'a pas la même gravité qu'en été, et deux interventions simultanées sur des
+ouvrages voisins peuvent fragiliser une zone entière. Il est aussi \emph{incertain}, puisqu'il dépend
+de la météo, de la consommation et de la production des semaines à venir. RTE le décrit donc par un
+ensemble de scénarios.
+
+Planifier ces interventions est aujourd'hui un travail largement manuel, long et difficile à
+optimiser globalement. C'est le problème que RTE a soumis à la communauté de recherche
+opérationnelle lors du challenge ROADEF/EURO 2020~\cite{sujet}, avec des instances réelles
+anonymisées, un vérificateur officiel (le checker) et un temps de calcul imposé.
+
+\section{Problématique}
+
+Il s'agit de choisir la date de début de chaque intervention de façon à rendre le réseau le moins
+vulnérable possible sur l'horizon de planification, tout en respectant les équipes disponibles et les
+incompatibilités entre interventions. La difficulté tient à quatre caractéristiques du problème :
+\begin{itemize}
+  \item \textbf{un critère sensible au risque.} On minimise un compromis entre le risque moyen sur les
+        scénarios et l'\emph{excès} du quantile (à 95\,\% sur la plupart des instances) sur cette
+        moyenne. Le planning doit donc être bon en moyenne, mais aussi dans les scénarios
+        défavorables ;
+  \item \textbf{un objectif non linéaire et non séparable.} Le quantile d'une période dépend de toutes
+        les interventions en cours à cette période : on ne peut pas évaluer une intervention
+        isolément, ni écrire directement l'objectif comme une somme de coûts individuels ;
+  \item \textbf{des contraintes dures.} Les bornes de ressources, minimales et maximales, et les
+        exclusions saisonnières rendent la simple recherche d'une solution réalisable non triviale ;
+  \item \textbf{une taille et un temps limités.} Les instances vont de quelques milliers à 17 millions
+        de valeurs de risque, et chaque instance doit être résolue en 15 minutes.
+\end{itemize}
+
+Ce rapport cherche à répondre à trois questions :
+\begin{enumerate}[label=\textbf{Q\arabic*.}]
+  \item Quelle qualité des méthodes approchées, un glouton puis une métaheuristique, atteignent-elles
+        dans le temps imparti, comparées aux meilleures solutions du challenge ?
+  \item Une méthode exacte, la PLNE, peut-elle résoudre ces instances, ou au moins \emph{certifier}
+        la distance des solutions trouvées à l'optimum ?
+  \item Comment mesurer ces performances sans biais, alors que les paramètres de la métaheuristique
+        doivent eux-mêmes être réglés sur des instances ?
 \end{enumerate}
-Les trois méthodes partagent une évaluation incrémentale de l'objectif (section~\ref{sec:evaluation}).
-La section~\ref{sec:protocole} décrit le protocole expérimental, la section~\ref{sec:resultats} les
-résultats, et la section~\ref{sec:discussion} leurs limites.
 
-Un point de méthode guide tout le rapport : les paramètres du recuit ont été réglés sur trois
-instances (A\_06, A\_09, A\_13). Évaluer une méthode sur les instances qui ont servi à la régler
-surestime sa qualité ; ces trois instances sont donc présentées à part, et les conclusions reposent
-sur les douze autres.
+\section{Démarche et contributions}
+
+Nous développons et comparons trois méthodes, de la plus rapide à la plus exacte. Elles s'appuient sur
+une évaluation incrémentale commune, validée contre le checker officiel :
+\begin{enumerate}
+  \item un \textbf{glouton} qui place les interventions de la plus difficile à la plus facile, selon un
+        score de difficulté, puis répare les contraintes violées ;
+  \item un \textbf{recuit simulé} suivi d'une descente, qui améliore la solution du glouton dans le
+        temps du challenge ;
+  \item une \textbf{PLNE} complète, résolue par Gurobi, qui fournit une solution et une borne
+        inférieure, donc un écart prouvé à l'optimum.
+\end{enumerate}
+Les principaux résultats sont les suivants :
+\begin{itemize}
+  \item un recuit réglé sur trois instances et évalué sur les douze autres, à 0,52\,\% en moyenne de la
+        meilleure valeur connue, avec 75 exécutions réalisables sur 75 ;
+  \item l'optimum prouvé sur huit instances ;
+  \item une coupe linéaire simple sur le quantile, qui fait passer le gap certifié de A\_02 de 55,94\,\% à
+        1,32\,\% ;
+  \item un protocole qui sépare explicitement les instances de réglage (A\_06, A\_09, A\_13) des
+        instances d'évaluation : évaluer une méthode sur les instances qui ont servi à la régler
+        surestime sa qualité.
+\end{itemize}
+
+\section{Organisation du rapport}
+
+Le chapitre~\ref{chap:probleme} formalise le problème et présente les instances. Le
+chapitre~\ref{chap:evaluation} décrit l'évaluation incrémentale. Les chapitres~\ref{chap:glouton},
+\ref{chap:recuit} et~\ref{chap:plne} présentent les trois méthodes. Le chapitre~\ref{chap:protocole}
+fixe le protocole expérimental, le chapitre~\ref{chap:resultats} donne les résultats, et le
+chapitre~\ref{chap:discussion} en discute les limites avant la conclusion. Les termes techniques sont
+définis dans le glossaire, en fin de document.
 
 % ================================================================ problème
-\section{Problème}\label{sec:probleme}
+\chapter{Le problème de planification}\label{chap:probleme}
 
-\subsection{Données}
+\section{Données}
 
 Une instance comprend :
 \begin{itemize}
@@ -161,11 +247,17 @@ Une instance comprend :
         temps de calcul (15 minutes).
 \end{itemize}
 
-\subsection{Contraintes et objectif}
+\section{Contraintes}
 
-Une solution affecte une date $x_i \in \Sd_i$ à chaque intervention. Elle est réalisable si, pour
-toute ressource $c$ et toute période $t$, la charge totale des interventions en cours reste dans
-$[\underline{u}_c^t, \overline{u}_c^t]$, et si aucune exclusion n'est violée.
+Une solution affecte une date $x_i \in \Sd_i$ à chaque intervention. Elle est réalisable si :
+\begin{itemize}
+  \item pour toute ressource $c$ et toute période $t$, la charge totale des interventions en cours
+        reste dans $[\underline{u}_c^t, \overline{u}_c^t]$ ;
+  \item aucune exclusion n'est violée : deux interventions exclusives ne sont jamais en cours en même
+        temps pendant une période de la saison concernée.
+\end{itemize}
+
+\section{Objectif}
 
 Le risque du scénario $\omega$ en $t$ est la somme des risques des interventions en cours,
 $r_{t,\omega}(x) = \sum_{i} r_i^{t, x_i, \omega}$. On note $m_t(x)$ sa moyenne sur les $S_t$ scénarios
@@ -178,7 +270,7 @@ Le premier terme est le risque moyen (\texttt{obj1} dans le checker), le second 
 quantile sur la moyenne (\texttt{obj2}). Le quantile rend l'objectif non linéaire et non séparable :
 la contribution d'une intervention dépend des dates de toutes les autres interventions en cours.
 
-\subsection{Instances}
+\section{Instances}
 
 Nous utilisons les 15 instances A du challenge (tableau~\ref{tab:instances}). Elles sont très
 variées : de 18 à 706 interventions, de 17 à 365 périodes, de 1 à 693 scénarios. Comme mesure de
@@ -215,7 +307,10 @@ A\_15 & 108 & 53 & 10 & 22 & 283 à 347 & 0,95 & 2\,580\,108 \\
 \end{table}
 
 % ============================================================== évaluation
-\section{Évaluation incrémentale}\label{sec:evaluation}
+\chapter{Évaluation incrémentale}\label{chap:evaluation}
+\addtocontents{toc}{\protect\setcounter{tocdepth}{0}} % chapitre court : sections hors de la table
+
+\section{État maintenu}
 
 Le glouton et le recuit essaient des millions de changements de date ; recalculer l'objectif
 complet à chaque essai serait trop lent. La classe \texttt{Evaluation} (\texttt{src/evaluation.py})
@@ -224,29 +319,44 @@ de chaque ressource et l'occupation des exclusions. Déplacer une intervention n
 périodes où elle était ou sera en cours : on y met à jour les risques, puis la moyenne et le
 quantile (sélection partielle \texttt{numpy.partition}), en $O(D \cdot S \log S)$ pour une durée $D$.
 
+\section{Coût pénalisé}
+
 Le glouton et le recuit travaillent sur un coût pénalisé
 \[
   C(x) = \obj(x) + \lambda \, V(x),
 \]
 où $V(x)$ cumule les dépassements des bornes de ressources et les périodes d'exclusion violées.
 \texttt{assign} applique un changement et renvoie $\Delta C$ ; \texttt{delta} renvoie $\Delta C$ sans
-modifier l'état. L'objectif et les violations calculés coïncident avec ceux du checker officiel
-(écart maximal de $3 \cdot 10^{-9}$ sur les 75 solutions de la campagne finale), sans dérive après
-de longues suites de mouvements. En Python, le recuit évalue de l'ordre de 1\,000 à 6\,000 mouvements
-par seconde selon l'instance.
+modifier l'état.
+
+\section{Validation}
+
+L'objectif et les violations calculés coïncident avec ceux du checker officiel (écart maximal de
+$3 \cdot 10^{-9}$ sur les 75 solutions de la campagne finale), sans dérive après de longues suites
+de mouvements. En Python, le recuit évalue de l'ordre de 1\,000 à 6\,000 mouvements par seconde selon
+l'instance.
 
 % ================================================================= glouton
-\section{Heuristique gloutonne}\label{sec:glouton}
+\addtocontents{toc}{\protect\setcounter{tocdepth}{1}}
+\chapter{Heuristique gloutonne}\label{chap:glouton}
 
-\subsection{Ordre de placement}
+\section{Ordre de placement}
 
 Le glouton place les interventions une à une, chacune à la date qui augmente le moins le coût
 pénalisé. L'ordre compte : une intervention longue, lourde ou peu flexible doit être placée tôt,
-quand il reste de la place. Pour chaque intervention, nous calculons (\texttt{src/indicateurs.py}) sa
-flexibilité $F_i = |\Sd_i|$, sa durée moyenne $D_i$, sa charge relative moyenne $W_i$ (somme sur
-les ressources de la charge divisée par la borne maximale), son nombre d'exclusions $E_i$, son
-risque moyen $\bar R_i$ et son regret $\mathrm{Reg}_i$ (écart de risque entre sa deuxième meilleure
-date et sa meilleure, si elle était seule). Le score de difficulté est
+quand il reste de la place. Pour chaque intervention, nous calculons (\texttt{src/indicateurs.py}) :
+\begin{itemize}
+  \item sa flexibilité $F_i = |\Sd_i|$ et sa durée moyenne $D_i$ ;
+  \item sa charge relative moyenne $W_i$ (somme sur les ressources de la charge divisée par la borne
+        maximale) ;
+  \item son nombre d'exclusions $E_i$ et son risque moyen $\bar R_i$ ;
+  \item son regret $\mathrm{Reg}_i$, l'écart de risque entre sa deuxième meilleure date et sa
+        meilleure, si elle était seule.
+\end{itemize}
+
+\section{Score de difficulté}
+
+Le score de difficulté est
 \[
   \mathrm{score}_i = a \, \mathcal{N}\!\left(\frac{W_i D_i}{F_i}\right)
                    + b \, \mathcal{N}\!\left(\frac{E_i}{F_i}\right)
@@ -258,7 +368,7 @@ $a = b = 1$ et $c = 0{,}5$ : la faisabilité passe avant le regret. La pénalit�
 $\lambda = 10 \cdot \frac{1}{|\I|} \sum_i \bar R_i$, pour qu'une violation coûte plus que n'importe
 quel gain de risque.
 
-\subsection{Construction et réparation}
+\section{Construction}
 
 \begin{algorithm}[H]
 \caption{\textsc{Glouton}}
@@ -273,6 +383,8 @@ quel gain de risque.
 \State \Return $x$
 \end{algorithmic}
 \end{algorithm}
+
+\section{Réparation}
 
 Les bornes \emph{minimales} des ressources ne peuvent pas être garanties pendant la construction :
 tant que toutes les interventions ne sont pas placées, une ressource peut être sous-utilisée. Sans
@@ -301,9 +413,9 @@ Après réparation, les 15 instances A sont réalisables, au prix d'un objectif 
 sauf sur A\_04 (85 s, dont la réparation). Il sert de point de départ au recuit.
 
 % ================================================================== recuit
-\section{Recuit simulé et descente}\label{sec:recuit}
+\chapter{Recuit simulé et descente}\label{chap:recuit}
 
-\subsection{Principe}
+\section{Principe}
 
 Le recuit simulé~\cite{kirkpatrick} part de la solution du glouton et tire des mouvements au
 hasard ; un mouvement qui améliore le coût est toujours accepté, un mouvement qui le dégrade de
@@ -312,7 +424,9 @@ décroît au cours du temps. Accepter des dégradations au début permet de sort
 à basse température, le recuit devient une descente. Il renvoie la meilleure solution rencontrée,
 pas la dernière.
 
-\paragraph{Voisinage.} Deux mouvements :
+\section{Voisinage}
+
+Deux mouvements sont utilisés :
 \begin{itemize}
   \item \emph{déplacement} : une intervention change de date ; dans 80\,\% des cas la nouvelle date
         est proche ($\pm 5$ périodes, affinage), sinon elle est tirée dans tout $\Sd_i$ (diversification) ;
@@ -321,24 +435,29 @@ pas la dernière.
         tient lieu du 2-opt des problèmes de tournées.
 \end{itemize}
 
-\paragraph{Température.} $\Theta_0$ est calibrée pour que la moitié des mouvements dégradants soient
-acceptés au départ : sur 500 mouvements aléatoires, $\Theta_0 = -\bar\delta / \ln 0{,}5$ avec $\bar\delta$
-la dégradation moyenne. Seuls les mouvements qui ne changent pas les violations entrent dans cette
-moyenne : sinon la pénalité (de l'ordre de $10^5$) écrase les variations d'objectif (de l'ordre de 1
-à 100), la température reste trop haute et le recuit marche au hasard. Ce piège a été rencontré :
-avec tous les mouvements, le recuit n'améliorait jamais le glouton. Le refroidissement est
-géométrique, $\Theta \gets \alpha_\Theta \, \Theta$ après chaque palier de $|\I|$ itérations, et
-$\alpha_\Theta$ est calculé à partir de la vitesse mesurée pour que $\Theta$ atteigne $10^{-3} \, \Theta_0$
-à la fin du temps imparti.
+\section{Température}
 
-\paragraph{Infaisabilité.} Le recuit peut traverser des solutions infaisables : tant que la solution
-courante viole une contrainte, $\lambda$ est multiplié par 1,01 à chaque palier. La meilleure
-solution est choisie selon un ordre qui ne dépend pas de $\lambda$ : moins de violations d'abord,
-puis meilleur objectif.
+$\Theta_0$ est calibrée pour que la moitié des mouvements dégradants soient acceptés au départ : sur
+500 mouvements aléatoires, $\Theta_0 = -\bar\delta / \ln 0{,}5$ avec $\bar\delta$ la dégradation
+moyenne. Seuls les mouvements qui ne changent pas les violations entrent dans cette moyenne : sinon
+la pénalité (de l'ordre de $10^5$) écrase les variations d'objectif (de l'ordre de 1 à 100), la
+température reste trop haute et le recuit marche au hasard. Ce piège a été rencontré : avec tous les
+mouvements, le recuit n'améliorait jamais le glouton.
 
-\paragraph{Descente finale.} Le dernier dixième du temps est consacré à une descente : meilleur
-déplacement de chaque intervention, puis swaps entre interventions qui se chevauchent, jusqu'à un
-minimum local.
+Le refroidissement est géométrique, $\Theta \gets \alpha_\Theta \, \Theta$ après chaque palier de
+$|\I|$ itérations, et $\alpha_\Theta$ est calculé à partir de la vitesse mesurée pour que $\Theta$
+atteigne $10^{-3} \, \Theta_0$ à la fin du temps imparti.
+
+\section{Infaisabilité et descente finale}
+
+Le recuit peut traverser des solutions infaisables : tant que la solution courante viole une
+contrainte, $\lambda$ est multiplié par 1,01 à chaque palier. La meilleure solution est choisie selon
+un ordre qui ne dépend pas de $\lambda$ : moins de violations d'abord, puis meilleur objectif.
+
+Le dernier dixième du temps est consacré à une descente : meilleur déplacement de chaque
+intervention, puis swaps entre interventions qui se chevauchent, jusqu'à un minimum local.
+
+\section{Algorithme}
 
 \begin{algorithm}[H]
 \caption{\textsc{Recuit}$(x^0, t_{\lim})$}
@@ -366,7 +485,7 @@ Le temps se répartit ainsi : glouton (réparation bornée à 20\,\% du temps), 
 puis descente. En 15 minutes, le recuit essaie de 0,9 million (A\_04) à 4,7 millions (A\_07) de
 mouvements.
 
-\subsection{Réglage des paramètres}
+\section{Réglage des paramètres}
 
 Le réglage a été fait sur trois instances de tailles et d'écarts glouton / meilleure valeur connue
 variés, A\_06, A\_09 et A\_13, avec des graines (100 et 101) distinctes de celles de l'évaluation et
@@ -407,7 +526,7 @@ $p_{\text{loc}} = 0{,}8$, $r = 5$, $p_0 = 0{,}5$, $\Theta_{\text{fin}} / \Theta_
 est que \textbf{les swaps sont indispensables} : sans swap, A\_06 vaut environ 633 en moyenne,
 contre 614. A\_09 ne discrimine pas : toutes les variantes y trouvent 1507,28.
 
-\subsection{Comportement}
+\section{Comportement}
 
 La figure~\ref{fig:convergence} montre la convergence sur A\_01. Pendant la phase chaude, le coût
 courant oscille bien au-dessus de la solution du glouton et la meilleure solution ne change pas ;
@@ -434,9 +553,9 @@ reste vers 25\,\% en fin de recuit, vraisemblablement à cause des nombreux mouv
 \end{figure}
 
 % ==================================================================== PLNE
-\section{Programmation linéaire en nombres entiers}\label{sec:plne}
+\chapter{Programmation linéaire en nombres entiers}\label{chap:plne}
 
-\subsection{Modèle}
+\section{Modèle}
 
 La PLNE (\texttt{src/Plne.py}) utilise une variable binaire $x_{i,s}$ par intervention et par date
 de début possible.
@@ -460,7 +579,7 @@ inférieure de $Q_t$ obtenue avec les contributions minimales. Avec un seul scé
 il n'y a ni $Q$, ni $E$, ni $y$. Gurobi~\cite{gurobi} résout le modèle avec \texttt{MIPGap} $= 0$ (un
 statut optimal est donc un optimum exact), en partant de la meilleure solution du recuit (MIP start).
 
-\subsection{Faiblesse de la borne et coupes de quantile}
+\section{Faiblesse de la borne}
 
 Sur les instances à plusieurs scénarios, la borne inférieure progresse lentement. Le cas extrême est
 A\_02 (120 scénarios, 4,1 millions de non-zéros) : après 15 minutes, la borne vaut 2058 pour une
@@ -469,17 +588,20 @@ solution à 4672, soit un gap de 55,94\,\%. L'excès y pèse plus que le risque 
 fractionnaires suffisent à neutraliser les big-M : $Q_t$ n'est presque plus contraint et la borne ne
 compte guère que la moyenne.
 
-\paragraph{Essai : génération de contraintes sur les scénarios.} Gouvine~\cite{gouvine} propose de
-résoudre un modèle restreint à un sous-ensemble $W_t$ de scénarios (relaxation valide : au moins
-$|W_t| - (S_t - k_t)$ scénarios de $W_t$ sous $Q_t$), puis d'ajouter les scénarios qui dépassent $Q_t$
-dans la solution obtenue. Sur A\_02, avec 9 scénarios par période, il faut 272 secondes pour résoudre
-le modèle restreint à 1\,\% près, pour une borne de 1624 ; avec 13 scénarios, la borne atteint 2054,
-le niveau du modèle complet. Le goulot n'est pas le nombre de binaires mais le big-M, et un petit
-$W_t$ donne un rang de quantile trop bas. Nous avons abandonné cette piste.
+\section{Essai : génération de contraintes sur les scénarios}
 
-\paragraph{Coupe retenue.} Au plus $S_t - k_t$ scénarios dépassent $Q_t$ ; tout ensemble $W$ de
-$S_t - k_t + 1$ scénarios en contient donc au moins un sous $Q_t$. Comme chaque intervention n'a
-qu'une date de début,
+Gouvine~\cite{gouvine} propose de résoudre un modèle restreint à un sous-ensemble $W_t$ de scénarios
+(relaxation valide : au moins $|W_t| - (S_t - k_t)$ scénarios de $W_t$ sous $Q_t$), puis d'ajouter les
+scénarios qui dépassent $Q_t$ dans la solution obtenue. Sur A\_02, avec 9 scénarios par période, il
+faut 272 secondes pour résoudre le modèle restreint à 1\,\% près, pour une borne de 1624 ; avec 13
+scénarios, la borne atteint 2054, le niveau du modèle complet. Le goulot n'est pas le nombre de
+binaires mais le big-M, et un petit $W_t$ donne un rang de quantile trop bas. Nous avons abandonné
+cette piste.
+
+\section{Coupes de quantile}
+
+Au plus $S_t - k_t$ scénarios dépassent $Q_t$ ; tout ensemble $W$ de $S_t - k_t + 1$ scénarios en
+contient donc au moins un sous $Q_t$. Comme chaque intervention n'a qu'une date de début,
 \[
   Q_t \;\ge\; \min_{\omega \in W} r_{t,\omega}
       \;\ge\; \sum_{i,s} \Big( \min_{\omega \in W} r_i^{t,s,\omega} \Big) \, x_{i,s}.
@@ -488,17 +610,19 @@ Cette coupe est linéaire, valide pour toute solution entière, et n'ajoute aucu
 forte quand les scénarios sont corrélés : sur la meilleure solution de A\_02, avec $W$ formé de ses
 sept scénarios les plus hauts en chaque période, elle retrouve 96\,\% de l'excès (4763 sur 4943).
 
-\paragraph{Mise en œuvre.}
+La mise en œuvre comporte trois étapes :
 \begin{enumerate}
-  \item On résout la relaxation linéaire \emph{sans} les $y$ ni les big-M, où $Q_t$ n'est borné que par
-        les coupes ; les premières coupes sont tirées de la solution de départ.
-  \item Séparation : en chaque période, $W$ est formé des $S_t - k_t + 1$ scénarios les plus hauts de
+  \item on résout la relaxation linéaire \emph{sans} les $y$ ni les big-M, où $Q_t$ n'est borné que par
+        les coupes ; les premières coupes sont tirées de la solution de départ ;
+  \item séparation : en chaque période, $W$ est formé des $S_t - k_t + 1$ scénarios les plus hauts de
         la solution relâchée ; la coupe est ajoutée si elle est violée, et on recommence jusqu'à ce
-        qu'aucune ne le soit.
-  \item Les coupes sont ajoutées à la PLNE complète, qui reste exacte, puis séparées de nouveau à
+        qu'aucune ne le soit ;
+  \item les coupes sont ajoutées à la PLNE complète, qui reste exacte, puis séparées de nouveau à
         chaque nœud de l'arbre de recherche (callback \texttt{cbCut} de Gurobi). La borne retenue est
         la meilleure des deux.
 \end{enumerate}
+
+\section{Résultats sur A\_02}
 
 \begin{table}[H]
 \centering
@@ -525,31 +649,39 @@ PLNE améliore aussi la solution du recuit (4672,13 puis 4671,94), ce qu'elle ne
 coupes.
 
 % =============================================================== protocole
-\section{Protocole expérimental}\label{sec:protocole}
+\chapter{Protocole expérimental}\label{chap:protocole}
+\addtocontents{toc}{\protect\setcounter{tocdepth}{0}} % chapitre court : sections hors de la table
 
-\begin{itemize}
-  \item \textbf{Budget.} Recuit et PLNE disposent du temps du challenge, 15 minutes par instance
-        (lecture du fichier JSON non comprise pour le recuit, construction du modèle comprise pour la
-        PLNE). Le glouton s'exécute une fois, et nous relevons son temps.
-  \item \textbf{Graines.} Le recuit est lancé avec cinq graines (1 à 5) sur chaque instance ; nous
-        donnons la moyenne, l'écart-type et la meilleure valeur.
-  \item \textbf{Juge.} Toutes les solutions sont vérifiées par le checker officiel du
-        challenge~\cite{depot}.
-  \item \textbf{Référence.} Les écarts sont mesurés à la meilleure valeur trouvée pendant la
-        qualification du challenge (15 minutes)~\cite{qualif}.
-  \item \textbf{Réglage et évaluation.} A\_06, A\_09 et A\_13 ont servi au réglage du recuit : elles
-        sont présentées à part, et les moyennes qui servent de conclusion portent sur les douze autres
-        instances. Le profil de performance (figure~\ref{fig:profil}) ne porte que sur ces douze
-        instances.
-  \item \textbf{Machine.} Intel Core i7-1185G7 (4 cœurs, 8 fils), 15 Go de mémoire ; Python 3.12,
-        NumPy 2.5, Gurobi 13.0 (licence académique). Six exécutions du recuit en parallèle ; une PLNE
-        à la fois, sur tous les cœurs, avec une limite mémoire de 8 Go.
-\end{itemize}
+\section{Budget et graines}
+
+Recuit et PLNE disposent du temps du challenge, 15 minutes par instance (lecture du fichier JSON non
+comprise pour le recuit, construction du modèle comprise pour la PLNE). Le glouton s'exécute une
+fois, et nous relevons son temps. Le recuit est lancé avec cinq graines (1 à 5) sur chaque instance ;
+nous donnons la moyenne, l'écart-type et la meilleure valeur.
+
+\section{Juge et référence}
+
+Toutes les solutions sont vérifiées par le checker officiel du challenge~\cite{depot}. Les écarts
+sont mesurés à la meilleure valeur trouvée pendant la qualification du challenge
+(15 minutes)~\cite{qualif}.
+
+\section{Instances de réglage et d'évaluation}
+
+A\_06, A\_09 et A\_13 ont servi au réglage du recuit : elles sont présentées à part, et les moyennes
+qui servent de conclusion portent sur les douze autres instances. Le profil de performance
+(figure~\ref{fig:profil}) ne porte que sur ces douze instances.
+
+\section{Machine et logiciels}
+
+Intel Core i7-1185G7 (4 cœurs, 8 fils), 15 Go de mémoire ; Python 3.12, NumPy 2.5, Gurobi 13.0
+(licence académique). Six exécutions du recuit tournent en parallèle ; la PLNE tourne une instance à
+la fois, sur tous les cœurs, avec une limite mémoire de 8 Go.
 
 % ================================================================ résultats
-\section{Résultats}\label{sec:resultats}
+\addtocontents{toc}{\protect\setcounter{tocdepth}{1}}
+\chapter{Résultats}\label{chap:resultats}
 
-\subsection{Tableau comparatif}
+\section{Tableau comparatif}
 
 Le tableau~\ref{tab:principal} rassemble les trois méthodes ; il est produit par
 \texttt{src/tableau.py} à partir de \texttt{results/results.csv}. Les 75 exécutions du recuit sont
@@ -565,6 +697,8 @@ $^\dagger$ : borne obtenue avec les coupes de quantile. Les moyennes portent sur
 \setlength{\tabcolsep}{4pt}
 \input{../results/tableau.tex}
 \end{table}
+
+\section{Lecture par méthode}
 
 \begin{itemize}
   \item \textbf{Glouton.} En moyenne à 2,83\,\% de la référence sur les instances hors réglage. Il
@@ -584,7 +718,7 @@ $^\dagger$ : borne obtenue avec les coupes de quantile. Les moyennes portent sur
         la solution de départ, et son apport est la borne.
 \end{itemize}
 
-\subsection{Comparaison par instance}
+\section{Comparaison par instance}
 
 La figure~\ref{fig:methodes} montre l'écart de la meilleure solution de chaque méthode, la
 figure~\ref{fig:dispersion} la dispersion du recuit entre graines. Les petites instances (A\_07 à
@@ -605,12 +739,14 @@ dispersées (écart-type de 6 à 17), et y lancer plusieurs graines est utile.
 \label{fig:dispersion}
 \end{figure}
 
-\paragraph{Apport de la descente finale.} Sur les 75 exécutions, la descente améliore la solution du
-recuit dans 52 cas, de 0,13\,\% en moyenne ; le gain dépasse 0,8\,\% sur quelques exécutions (A\_04,
-A\_14, A\_06, et 2,69\,\% sur A\_15, graine 4), quand le recuit s'est arrêté loin d'un minimum local.
-L'essentiel du gain sur le glouton vient du recuit (figure~\ref{fig:etapes} en annexe).
+\section{Apport de la descente finale}
 
-\subsection{Effet de la taille}
+Sur les 75 exécutions, la descente améliore la solution du recuit dans 52 cas, de 0,13\,\% en
+moyenne ; le gain dépasse 0,8\,\% sur quelques exécutions (A\_04, A\_14, A\_06, et 2,69\,\% sur A\_15,
+graine 4), quand le recuit s'est arrêté loin d'un minimum local. L'essentiel du gain sur le glouton
+vient du recuit (figure~\ref{fig:etapes} en annexe).
+
+\section{Effet de la taille}
 
 \begin{figure}[H]
 \centering
@@ -629,7 +765,7 @@ Le nombre de scénarios compte donc plus que la taille brute : le quantile est l
 modèle. L'écart du recuit ne croît pas avec la taille ; il dépend surtout des instances où le glouton
 part de loin.
 
-\subsection{Profil de performance}
+\section{Profil de performance}
 
 Le profil de performance de Dolan et Moré (figure~\ref{fig:profil}) donne, pour chaque méthode, la
 part des instances où elle est à moins de $x$\,\% de la meilleure des méthodes comparées. Sur les douze
@@ -646,30 +782,43 @@ bien. Ce profil compare donc le recuit au glouton ; il ne montre pas que la PLNE
 \end{figure}
 
 % =============================================================== discussion
-\section{Discussion et limites}\label{sec:discussion}
+\chapter{Discussion et limites}\label{chap:discussion}
+\addtocontents{toc}{\protect\setcounter{tocdepth}{0}} % chapitre court : sections hors de la table
+
+\section{Rôles complémentaires des méthodes}
+
+Le glouton donne en quelques secondes une solution réalisable à quelques pourcents de la référence ;
+le recuit est le meilleur compromis au budget du challenge ; la PLNE est exacte sur les instances à
+peu de scénarios, et sa borne mesure la qualité des autres solutions. Ces rôles répondent aux
+questions Q1 et Q2 de l'introduction : les méthodes approchées sont à moins de 1\,\% de la référence
+en moyenne, et la PLNE résout ou certifie une grande partie des instances.
+
+\section{Limites du protocole}
 
 \begin{itemize}
-  \item \textbf{Rôles complémentaires.} Le glouton donne en quelques secondes une solution réalisable
-        à quelques pourcents ; le recuit est le meilleur compromis au budget du challenge ; la PLNE est
-        exacte sur les instances à peu de scénarios, et sa borne mesure la qualité des autres
-        solutions.
   \item \textbf{Réglage limité.} Deux graines et 120 secondes par configuration, un facteur à la fois :
         le bruit entre graines empêche de départager des variantes à moins de 1\,\%. Un réglage plus
         fiable demanderait plus de graines, le budget complet, et un plan qui teste les interactions.
   \item \textbf{Cinq graines} au lieu des dix prévues, faute de temps de calcul (la campagne finale
         prend déjà 3 h 30 sur six cœurs).
+  \item \textbf{Instances B} non évaluées : le recuit termine la réparation de B\_01, que le glouton
+        laisse avec de petits dépassements, mais aucune campagne n'a été menée sur l'ensemble B.
+\end{itemize}
+
+\section{Limites des méthodes}
+
+\begin{itemize}
   \item \textbf{PLNE dépendante du recuit.} Le MIP start vient de la meilleure graine : la qualité des
         solutions PLNE n'est pas celle d'une PLNE seule. Les coupes de quantile n'ont été évaluées au
         budget du challenge que sur A\_02 ; les autres instances limitées par le temps (A\_05, A\_08,
         A\_11, A\_13, A\_14, A\_15, gaps de 0,02 à 10,5\,\%) restent à traiter.
-  \item \textbf{Instances B} non évaluées : le recuit termine la réparation de B\_01, que le glouton
-        laisse avec de petits dépassements, mais aucune campagne n'a été menée sur l'ensemble B.
   \item \textbf{Glouton.} La version randomisée multi-départ (GRASP) et la comparaison des critères de
         tri n'ont pas été menées ; le score de difficulté est utilisé avec un seul jeu de poids.
 \end{itemize}
 
 % =============================================================== conclusion
-\section{Conclusion}
+\addtocontents{toc}{\protect\setcounter{tocdepth}{1}}
+\chapter{Conclusion}\label{chap:conclusion}
 
 Sur les 15 instances A du challenge ROADEF/EURO 2020, au temps du challenge, le recuit simulé
 suivi d'une descente ramène l'écart moyen à la meilleure valeur connue de 2,83\,\% (glouton) à
@@ -677,13 +826,78 @@ suivi d'une descente ramène l'écart moyen à la meilleure valeur connue de 2,8
 réalisables. La PLNE prouve l'optimum de huit instances et certifie la qualité des autres solutions.
 Une coupe linéaire simple sur le quantile, valide pour toute solution entière, renforce nettement sa
 borne quand les scénarios sont corrélés : sur A\_02, le gap certifié passe de 55,94\,\% à 1,32\,\%.
+Enfin, séparer les instances de réglage des instances d'évaluation (question Q3) montre que le
+réglage n'a pas avantagé ses propres instances.
 
 Les suites naturelles sont d'appliquer ces coupes aux six autres instances limitées par le temps,
 d'en tirer une borne pour guider le recuit, et d'évaluer les méthodes sur les instances B, plus
 grandes.
 
+% ================================================================ glossaire
+\chapter*{Glossaire}\label{chap:glossaire}
+\addcontentsline{toc}{chapter}{Glossaire}
+\markboth{Glossaire}{}
+
+\begin{description}[style=nextline, leftmargin=1.5em, itemsep=0.35em]
+  \item[Big-M] Grande constante $M$ qui active ou désactive une contrainte selon une variable binaire
+        ($r \le Q + M y$ : si $y = 1$, la contrainte ne dit plus rien). Un $M$ trop grand affaiblit la
+        relaxation linéaire.
+  \item[Borne inférieure] Valeur dont on prouve qu'aucune solution ne fait mieux ; donnée par la PLNE.
+  \item[Branch-and-bound] Méthode exacte qui explore un arbre en fixant des variables, et élague les
+        branches dont la relaxation ne peut pas battre la meilleure solution connue.
+  \item[Callback] Fonction appelée par le solveur pendant la résolution, ici pour ajouter des coupes
+        à chaque nœud de l'arbre.
+  \item[Checker] Programme officiel du challenge qui vérifie une solution et calcule son objectif ;
+        juge de toutes nos solutions.
+  \item[Coupe] Inégalité linéaire valide pour toutes les solutions entières, ajoutée pour renforcer la
+        relaxation linéaire.
+  \item[Coût pénalisé] Objectif augmenté de $\lambda$ fois les violations de contraintes ; permet aux
+        heuristiques de traverser des solutions infaisables.
+  \item[Descente] Recherche locale qui n'accepte que les mouvements améliorants, jusqu'à un minimum
+        local.
+  \item[Écart à la référence] $(\text{objectif} - \text{référence}) / \text{référence}$, en pourcentage.
+  \item[Excès] Différence, positive ou nulle, entre le quantile et la moyenne du risque d'une période ;
+        second terme de l'objectif.
+  \item[Exclusion] Paire d'interventions qui ne peuvent pas être en cours en même temps pendant une
+        saison donnée.
+  \item[Gap certifié] $(\text{solution} - \text{borne}) / \text{solution}$ : distance maximale prouvée
+        entre la solution trouvée et l'optimum. Un gap nul prouve l'optimalité.
+  \item[Glouton] Heuristique constructive qui prend à chaque étape la meilleure décision locale, sans
+        revenir en arrière.
+  \item[Graine] Valeur initiale du générateur aléatoire ; deux graines différentes donnent deux
+        exécutions différentes du recuit.
+  \item[Instance de réglage] Instance utilisée pour choisir les paramètres du recuit (A\_06, A\_09,
+        A\_13), présentée à part pour ne pas biaiser l'évaluation.
+  \item[Intervention] Opération de maintenance sur un ouvrage du réseau, dont on choisit la date de
+        début.
+  \item[MIP start] Solution fournie au solveur PLNE comme point de départ (ici, la meilleure graine du
+        recuit).
+  \item[Mouvement] Modification élémentaire d'une solution : \emph{déplacement} (une intervention
+        change de date) ou \emph{swap} (deux interventions échangent leurs dates).
+  \item[Palier] Suite d'itérations du recuit à température constante.
+  \item[PLNE] Programmation linéaire en nombres entiers : modèle d'optimisation à variables entières,
+        contraintes et objectif linéaires.
+  \item[Profil de performance] Courbe de Dolan et Moré : part des instances où une méthode est à moins
+        de $x$\,\% de la meilleure méthode.
+  \item[Quantile] Valeur $Q$ telle qu'une proportion $\tau$ des scénarios ait un risque inférieur ou
+        égal à $Q$ (par exemple $\tau = 0{,}95$).
+  \item[Recuit simulé] Métaheuristique qui accepte des dégradations avec une probabilité
+        $e^{-\delta/\Theta}$ décroissante, pour sortir des minima locaux.
+  \item[Référence] Meilleure valeur trouvée pendant la qualification du challenge, utilisée comme
+        étalon des écarts.
+  \item[Relaxation linéaire] PLNE dont on oublie le caractère entier des variables ; sa valeur est une
+        borne inférieure.
+  \item[Ressource] Équipe ou moyen nécessaire aux interventions, avec une charge minimale et maximale
+        par période.
+  \item[Scénario] Réalisation possible des conditions futures (météo, consommation), qui donne une
+        valeur de risque par intervention et par période.
+  \item[Séparation] Recherche d'une coupe violée par la solution courante de la relaxation.
+  \item[Température] Paramètre $\Theta$ du recuit qui règle la probabilité d'accepter une dégradation.
+\end{description}
+
 % ============================================================ bibliographie
 \begin{thebibliography}{9}
+\addcontentsline{toc}{chapter}{Bibliographie}
 
 \bibitem{sujet} P. Tournebise, M. Ruiz, P. Pancia (RTE). \emph{ROADEF Challenge RTE: Grid
 operation-based outage maintenance planning}. Sujet du challenge ROADEF/EURO 2020.
@@ -709,7 +923,7 @@ Annealing. \emph{Science}, 220(4598):671--680, 1983.
 
 % ================================================================== annexes
 \appendix
-\section{Figures complémentaires}
+\chapter{Figures complémentaires}
 
 \begin{figure}[H]
 \centering
@@ -728,8 +942,8 @@ Annealing. \emph{Science}, 220(4598):671--680, 1983.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.8\textwidth]{11_risque_A_05.pdf}
-\caption{Risque moyen et quantile 0,95 par période, meilleure solution du recuit sur A\_05 (graine 2, 635,37) ; l'écart
-entre les deux courbes est le terme d'excès.}
+\caption{Risque moyen et quantile 0,95 par période, meilleure solution du recuit sur A\_05 (graine 2,
+635,37) ; l'écart entre les deux courbes est le terme d'excès.}
 \label{fig:risque}
 \end{figure}
 
@@ -740,7 +954,7 @@ entre les deux courbes est le terme d'excès.}
 \label{fig:gantt}
 \end{figure}
 
-\section{Reproduire les résultats}
+\chapter{Reproduire les résultats}
 
 \begin{verbatim}
 make install                                  # environnement Python (.venv)
