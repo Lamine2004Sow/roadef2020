@@ -28,11 +28,12 @@ src/
   campagne.py          réglage des paramètres et campagne finale (plusieurs graines)
   logger.py            enregistrement des résultats (results/)
   graphes.py           graphes du rapport (results/figures/)
-  Plne.py              modèle PLNE (Gurobi)          (en cours)
+  Plne.py              PLNE complète (Gurobi)
 notes/
   heuristique.md       stratégie du glouton
   meta_heuristique.md  stratégie du recuit simulé
-  plne.md              PLNE et dépendance à Gurobi
+  plne.md              modèle PLNE complet, dépendance à Gurobi, premiers résultats
+  bibliographie.md     sources extérieures (sujet, checker, meilleures valeurs, articles)
   rapport.md           données et graphes pour le rapport
 solutions/             solutions produites
 RTE_ChallengeROADEF2020_checker.py   checker officiel

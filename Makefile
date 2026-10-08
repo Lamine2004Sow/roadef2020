@@ -2,7 +2,7 @@
 #   make install
 #   make heuristique     INSTANCE=A_set/A_01.json
 #   make metaheuristique INSTANCE=A_set/A_01.json [TEMPS=60] [GRAINE=0]
-#   make plne            INSTANCE=A_set/A_01.json   (Gurobi requis)
+#   make plne            INSTANCE=A_set/A_01.json [TEMPS=900] [DEPART=sol.txt]   (Gurobi requis)
 #   make graphes [INSTANCE=... SOLUTION=...]
 #   make check INSTANCE=A_set/A_01.json [SOLUTION=solutions/A_01.txt]
 #   make clean
@@ -15,6 +15,8 @@ OUT      ?= solutions
 GRAINE   ?= 0
 # TEMPS (s) vide : ComputationTime de l'instance
 TEMPS    ?=
+# DEPART : solution de départ de la PLNE (MIP start), facultative
+DEPART   ?=
 NAME      = $(basename $(notdir $(INSTANCE)))
 SOLUTION ?= $(OUT)/$(NAME).txt
 
@@ -24,7 +26,7 @@ help:
 	@echo "make install                              crée $(VENV) et y installe requirements.txt"
 	@echo "make heuristique     INSTANCE=...         glouton    -> $(OUT)/<instance>_heuristique.txt + checker"
 	@echo "make metaheuristique INSTANCE=... [TEMPS=s] [GRAINE=g]  recuit -> $(OUT)/<instance>_metaheuristique.txt + checker"
-	@echo "make plne            INSTANCE=...         PLNE Gurobi -> $(OUT)/<instance>_plne.txt + checker"
+	@echo "make plne            INSTANCE=... [TEMPS=s] [DEPART=sol]  PLNE Gurobi -> $(OUT)/<instance>_plne.txt + checker"
 	@echo "make graphes [INSTANCE=... SOLUTION=...] graphes du rapport -> results/figures/"
 	@echo "make check INSTANCE=... [SOLUTION=...]    vérifie une solution avec le checker officiel"
 	@echo "make clean                                supprime les caches Python"
@@ -46,7 +48,7 @@ metaheuristique:
 
 plne:
 	@mkdir -p $(OUT)
-	$(PYTHON) src/Plne.py $(INSTANCE) $(OUT)/$(NAME)_plne.txt
+	$(PYTHON) src/Plne.py $(INSTANCE) $(OUT)/$(NAME)_plne.txt $(if $(TEMPS),--temps $(TEMPS)) $(if $(DEPART),--depart $(DEPART))
 	$(PYTHON) RTE_ChallengeROADEF2020_checker.py $(INSTANCE) $(OUT)/$(NAME)_plne.txt
 
 # Graphes 1 à 8 depuis results/ ; 9 à 11 en plus si SOLUTION existe

@@ -17,7 +17,7 @@ INSTANCE_COLUMNS = ['instance', 'interventions', 'T', 'ressources', 'exclusions'
                     'scenarios_min', 'scenarios_max', 'alpha', 'quantile', 'temps_limite']
 RESULT_COLUMNS = ['date', 'instance', 'methode', 'variante', 'graine',
                   'objectif', 'obj1', 'obj2', 'realisable', 'viol_ressources', 'viol_exclusions',
-                  'temps', 'lam', 'a', 'b', 'c', 'T0', 'alpha', 'iterations']
+                  'temps', 'lam', 'a', 'b', 'c', 'T0', 'alpha', 'iterations', 'borne', 'gap']
 CONVERGENCE_COLUMNS = ['temps', 'iteration', 'temperature', 'cout_courant', 'meilleur_cout',
                        'taux_acceptation', 'deplacements_acceptes', 'swaps_acceptes']
 
@@ -35,6 +35,17 @@ def _append(path: str, columns: list, row: dict):
         raise ValueError(f'Colonnes inconnues pour {os.path.basename(path)} : {sorted(unknown)}')
     os.makedirs(os.path.dirname(path), exist_ok=True)
     new = not os.path.exists(path)
+    if not new:
+        # Colonnes ajoutées depuis la création du fichier : réécrire l'en-tête, cases vides
+        with open(path, newline='') as f:
+            header = next(csv.reader(f), [])
+        if header != columns:
+            with open(path, newline='') as f:
+                old = list(csv.DictReader(f))
+            with open(path, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=columns)
+                writer.writeheader()
+                writer.writerows({k: r.get(k, '') for k in columns} for r in old)
     with open(path, 'a', newline='') as f:
         writer = csv.DictWriter(f, fieldnames=columns)
         if new:
@@ -87,7 +98,7 @@ def log_instance(instance: dict, instance_path: str, path: str = None):
 
 def log_result(ev, instance_path: str, methode: str, temps: float,
                variante: str = '', graine='', path: str = None, **params):
-    """Ajoute une exécution dans results.csv. `params` : lam, a, b, c, T0, alpha, iterations."""
+    """Ajoute une exécution dans results.csv. `params` : lam, a, b, c, T0, alpha, iterations, borne, gap."""
     path = path or os.path.join(RESULTS_DIR, 'results.csv')
     obj1, obj2 = objectifs(ev)
     viol_res = float(ev.res_viol.sum())
