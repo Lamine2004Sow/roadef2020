@@ -69,10 +69,43 @@ Toutes les solutions ont été vérifiées par le checker officiel (objectif ide
   (indicator constraints, CPLEX, 1 h) des gaps de 6,31 % sur A_08 et 8,72 % sur A_11, du même ordre
   que les nôtres en 120 s ; sa génération de contraintes prouve l'optimum de A_08.
 
+## Résultats au temps du challenge (`python src/campagne.py plne`)
+
+15 instances A, `ComputationTime` = 15 min (construction du modèle comprise), une PLNE à la fois sur
+les 8 cœurs, `MemLimit` 8 Go (15 Go de RAM sur la machine), MIP start : meilleure graine du recuit.
+**15/15 solutions réalisables** selon le checker officiel. Tableau complet avec glouton et recuit :
+`results/tableau.md` (`make tableau`).
+
+| Instance | Scénarios (max) | Statut | PLNE | Borne | Gap certifié | Temps |
+|---|---|---|---|---|---|---|
+| A_01 | 1 | optimal | 1767,82 | 1767,82 | 0 | 2,6 s |
+| A_03 | 1 | optimal | 848,18 | 848,18 | 0 | 0,5 s |
+| A_04 | 1 | optimal | 2085,88 | 2085,88 | 0 | 112 s |
+| A_06 | 1 | optimal | 590,62 | 590,62 | 0 | 4,1 s |
+| A_07 | 6 | optimal | 2272,78 | 2272,78 | 0 | 0,1 s |
+| A_09 | 6 | optimal | 1507,28 | 1507,28 | 0 | 0,1 s |
+| A_10 | 6 | optimal | 2994,85 | 2994,85 | 0 | 2,6 s |
+| A_12 | 6 | optimal | 789,63 | 789,63 | 0 | 0,8 s |
+| A_13 | 12 | limite | 1998,84 | 1998,36 | 0,02 % | 900 s |
+| A_05 | 120 | limite | 635,37 | 593,49 | 6,59 % | 900 s |
+| A_02 | 120 | limite | 4672,13 | 2058,39 | 55,94 % | 900 s |
+| A_08 | 693 | limite | 744,29 | 700,11 | 5,94 % | 900 s |
+| A_11 | 693 | limite | 495,27 | 460,59 | 7,00 % | 900 s |
+| A_14 | 174 | limite | 2312,36 | 2080,06 | 10,05 % | 900 s |
+| A_15 | 347 | limite | 2314,92 | 2071,06 | 10,53 % | 900 s |
+
+- **Optimum prouvé sur 8 instances**, toutes égales à la meilleure valeur du challenge : les 4 à un
+  seul scénario (pas de quantile, A_04 compris malgré 252 114 binaires) et les 4 à 6 scénarios.
+  Sur A_01, A_04 et A_06, la PLNE améliore le meilleur recuit jusqu'à l'optimum (A_06 : 594,69 → 590,62).
+- Dès 12 scénarios, le temps limite est atteint : la PLNE n'améliore le départ du recuit que de 0,4 au plus
+  (A_13 : 1999,00 → 1998,84 ; A_14 : 2312,69 → 2312,36 ; inchangé sur A_02, A_05, A_08). Son intérêt y est la **borne** : elle certifie
+  que le meilleur recuit est à moins de 6 à 11 % de l'optimum (A_08, A_11, A_14, A_15, A_05).
+- A_02 (120 scénarios, 4,1 M de non-zéros) : borne très faible (gap 56 %), le big-M du quantile ne
+  serre presque rien ; A_05, même nombre de scénarios, reste à 6,6 %.
+- Mémoire : aucune PLNE n'a atteint les 8 Go.
+
 ## À faire
 
 - [x] Modèle : variables de date de début, ressources, exclusions, linéarisation du quantile.
-- [ ] Campagne au temps du challenge sur les 15 instances A : `python src/campagne.py plne`
-      (une PLNE à la fois sur tous les cœurs, ≈ 4 h ; plus petits modèles d'abord ; départ : meilleure
-      graine du recuit ; `MemLimit` 12 Go car non-zéros ≈ Σ_{i,s} Δ·S_t, à surveiller sur A_02, A_04, A_05).
+- [x] Campagne au temps du challenge sur les 15 instances A (voir ci-dessus).
 - [ ] Piste d'amélioration de la borne : génération de contraintes sur les scénarios (Gouvine).

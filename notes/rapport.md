@@ -124,7 +124,7 @@ le nombre d'interventions seul n'explique pas le temps (A_04 : 50 s).
 - **Même budget de temps** (`ComputationTime` du challenge) pour la métaheuristique et la PLNE ;
   le glouton tourne une fois, on note son temps.
 - **Même machine, même évaluation** (checker officiel).
-- Métaheuristique : 10 graines, moyenne ± écart-type et meilleure valeur.
+- Métaheuristique : 5 graines (campagne finale), moyenne ± écart-type et meilleure valeur.
 - PLNE : solution, borne inférieure et gap ; un optimum prouvé sert de référence exacte.
 
 | Indicateur | Ce qu'il montre |
@@ -135,8 +135,10 @@ le nombre d'interventions seul n'explique pas le temps (A_04 : 50 s).
 | gap de la PLNE | distance prouvée à l'optimum |
 
 **Présentation**
-- Tableau principal, une ligne par instance :
-  glouton (obj, temps) | méta (moyenne ± écart-type, meilleure) | PLNE (obj, gap, temps).
+- Tableau principal, une ligne par instance, généré par `src/tableau.py` (`make tableau`) →
+  `results/tableau.md` : glouton (obj, temps) | méta (moyenne ± écart-type, meilleure) |
+  PLNE (obj, borne, gap certifié, temps), écart à la référence du challenge dans chaque case ;
+  les 3 instances de réglage du recuit (A_06, A_09, A_13) en bloc séparé, avec leur propre moyenne.
 - Graphes 1, 12a, 12b et 13.
 - Optionnel : test de Wilcoxon apparié méta vs glouton sur toutes les instances.
 
@@ -152,7 +154,9 @@ départ), métaheuristique meilleur compromis, PLNE référence exacte sur les p
   (qualification, 15 min, [roadef.org](https://roadef.org/challenge/2020/en/qualifresult.php)).
 - [ ] Colonne `taille` dans `instances.csv` (+ recalcul des instances déjà enregistrées).
 - [ ] Graphes 12a, 12b (taille) et 13 (profil de performance).
-- [ ] Colonnes PLNE dans `results.csv` : borne inférieure et gap.
+- [x] Colonnes PLNE dans `results.csv` : borne inférieure et gap.
+- [x] Campagne PLNE au temps du challenge (`python src/campagne.py plne`, voir `notes/plne.md`).
+- [x] Tableau principal : `results/tableau.md` et `.csv` (`make tableau`), instances de réglage à part.
 - [x] Choisir le sous-ensemble d'instances de réglage : A_06, A_09, A_13 (voir `notes/meta_heuristique.md`).
   Elles restent dans la campagne finale : tableaux séparés dans `notes/meta_heuristique.md`,
   marquées d'un * dans les graphes 1, 2 et 8.

@@ -28,16 +28,17 @@ src/
   campagne.py          réglage des paramètres et campagne finale (plusieurs graines)
   logger.py            enregistrement des résultats (results/)
   graphes.py           graphes du rapport (results/figures/)
+  tableau.py           tableau comparatif glouton / recuit / PLNE (results/tableau.md)
   Plne.py              PLNE complète (Gurobi)
 notes/
   heuristique.md       stratégie du glouton
   meta_heuristique.md  stratégie du recuit simulé
-  plne.md              modèle PLNE complet, dépendance à Gurobi, premiers résultats
+  plne.md              modèle PLNE complet, dépendance à Gurobi, résultats au temps du challenge
   bibliographie.md     sources extérieures (sujet, checker, meilleures valeurs, articles)
   rapport.md           données et graphes pour le rapport
 solutions/             solutions produites
 RTE_ChallengeROADEF2020_checker.py   checker officiel
-Makefile                             commandes (install, heuristique, metaheuristique, plne, check, clean)
+Makefile                             commandes (install, heuristique, metaheuristique, plne, graphes, tableau, check, clean)
 ```
 
 ## Installation
@@ -73,11 +74,14 @@ Chaque commande écrit la solution puis la vérifie avec le checker officiel.
 ```bash
 .venv/bin/python src/campagne.py reglage [--temps 120] [--jobs 6]            # -> results/reglage/synthese.csv
 .venv/bin/python src/campagne.py finale  [--graines 1 2 3 4 5] [--jobs 6]    # 15 instances A, 15 min chacune
-.venv/bin/python src/campagne.py plne    [--jobs 1] [--memoire 12]           # PLNE, départ : meilleur recuit
+.venv/bin/python src/campagne.py plne    [--jobs 1] [--memoire 8]            # PLNE, départ : meilleur recuit
 ```
 
 La campagne finale (≈ 3 h 30 sur 6 cœurs) écrit `solutions/<instance>_metaheuristique_s<g>.txt`,
 vérifie chaque solution avec le checker et ajoute les résultats à `results/results.csv`.
+La campagne PLNE (≈ 2 h, une instance à la fois sur tous les cœurs) écrit `solutions/<instance>_plne.txt`.
+`make tableau` regroupe ensuite glouton, recuit et PLNE dans `results/tableau.md`, les instances de réglage
+(A_06, A_09, A_13) dans un bloc séparé.
 Paramètres du recuit : `--param nom=valeur` (voir `PARAMS` dans `src/meta_heuristique.py`).
 Résultats et réglage : `notes/meta_heuristique.md`.
 

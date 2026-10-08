@@ -179,7 +179,8 @@ Référence : meilleure valeur trouvée pendant la qualification du challenge (1
 | A_13 | 1998,66 | 2012,72 | 1999,00 | 2000,53 ± 1,35 | 0,70 % | 0,02 % | 0,09 % |
 | **Moyenne** | | | | | 4,83 % | 0,24 % | 0,63 % |
 
-En gras : référence atteinte (écart < 0,001 %).
+En gras : référence atteinte (écart < 0,001 %). Tableau consolidé avec la PLNE : `results/tableau.md`
+(`make tableau`, moyennes calculées sur les valeurs non arrondies : 0,52 % au lieu de 0,53 % ici).
 
 - Référence atteinte sur 6 instances (A_03, A_07, A_08, A_09, A_10, A_12), à moins de 0,1 % sur 5 autres.
 - Hors réglage, l'écart moyen passe de 2,83 % (glouton) à 0,53 % (moyenne des graines) : le réglage

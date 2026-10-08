@@ -7,7 +7,7 @@ Usage :
     python src/campagne.py finale [--param nom=valeur ...] [--graines 1 2 3 4 5] [--jobs 6]
         toutes les instances A avec le temps du challenge (ComputationTime) ;
         résultats dans results/, solutions dans solutions/<instance>_metaheuristique_s<g>.txt
-    python src/campagne.py plne [--temps S] [--jobs 1] [--threads 0] [--memoire 12] [--instances A_07 ...]
+    python src/campagne.py plne [--temps S] [--jobs 1] [--threads 0] [--memoire 8] [--instances A_07 ...]
         PLNE sur les instances A (temps du challenge par défaut), une à la fois par défaut,
         en partant de la meilleure solution réalisable du recuit (MIP start) ;
         solutions dans solutions/<instance>_plne.txt, logs dans results/logs/<instance>_plne.log
@@ -199,7 +199,7 @@ def main():
     p.add_argument('--temps', type=float, help='secondes (défaut : ComputationTime)')
     p.add_argument('--jobs', type=int, default=1, help='PLNE simultanées')
     p.add_argument('--threads', type=int, default=0, help='cœurs par PLNE (0 : tous)')
-    p.add_argument('--memoire', type=float, default=12, help='mémoire max de Gurobi en Go')
+    p.add_argument('--memoire', type=float, default=8, help='mémoire max de Gurobi en Go')
     p.add_argument('--instances', nargs='+', default=ORDRE_PLNE)
     args = parser.parse_args()
     if args.campagne == 'reglage':

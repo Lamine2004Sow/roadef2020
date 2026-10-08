@@ -1,0 +1,147 @@
+"""Tableau comparatif glouton / recuit / PLNE au temps du challenge (voir notes/rapport.md).
+
+Usage : python src/tableau.py
+Lit results/results.csv et results/best_known.csv ; écrit results/tableau.csv et results/tableau.md.
+Une ligne par instance A, en deux blocs : instances hors réglage, puis instances de réglage du recuit.
+    glouton : exécution la plus récente
+    recuit  : recuit+descente de la campagne finale (graines, sans variante), moyenne ± écart-type et meilleure
+    PLNE    : exécution la plus récente ; borne inférieure et gap certifiés par Gurobi
+"""
+import csv
+import os
+import statistics
+
+from campagne import INSTANCES_REGLAGE
+from logger import RESULTS_DIR, read_csv
+
+COLONNES = ['instance', 'reglage', 'reference', 'glouton', 'temps_glouton',
+            'recuit_moyenne', 'recuit_ecart_type', 'recuit_meilleur', 'recuit_realisables', 'recuit_graines',
+            'plne', 'plne_borne', 'plne_gap', 'temps_plne',
+            'ecart_glouton', 'ecart_recuit_moyenne', 'ecart_recuit_meilleur', 'ecart_plne']
+
+
+def ecart(obj, ref):
+    return None if obj is None else 100.0 * (obj - ref) / ref
+
+
+def lignes() -> list:
+    rows = read_csv(os.path.join(RESULTS_DIR, 'results.csv'))
+    ref = {r['instance']: r['objectif'] for r in read_csv(os.path.join(RESULTS_DIR, 'best_known.csv'))}
+    dernier = {}  # (instance, méthode) -> exécution la plus récente (results.csv est chronologique)
+    recuit = {}
+    for r in rows:
+        if r['methode'] in ('glouton', 'plne'):
+            dernier[r['instance'], r['methode']] = r
+        elif r['methode'] == 'recuit+descente' and r['graine'] != '' and not r['variante']:
+            recuit.setdefault(r['instance'], []).append(r)
+    out = []
+    for inst in sorted(ref):
+        g, p = dernier.get((inst, 'glouton')), dernier.get((inst, 'plne'))
+        rec = recuit.get(inst, [])
+        ok = [r['objectif'] for r in rec if r['realisable'] == 1]
+        l = {'instance': inst, 'reglage': int(inst in INSTANCES_REGLAGE), 'reference': ref[inst],
+             'glouton': g['objectif'] if g and g['realisable'] == 1 else None,
+             'temps_glouton': g['temps'] if g else None,
+             'recuit_moyenne': statistics.mean(ok) if ok else None,
+             'recuit_ecart_type': statistics.stdev(ok) if len(ok) > 1 else (0.0 if ok else None),
+             'recuit_meilleur': min(ok) if ok else None,
+             'recuit_realisables': len(ok), 'recuit_graines': len(rec),
+             'plne': p['objectif'] if p and p['realisable'] == 1 else None,
+             'plne_borne': p['borne'] if p else None, 'plne_gap': 100 * p['gap'] if p else None,
+             'temps_plne': p['temps'] if p else None}
+        for k in ('glouton', 'recuit_moyenne', 'recuit_meilleur', 'plne'):
+            l[f'ecart_{k}'] = ecart(l[k], ref[inst])
+        out.append(l)
+    return out
+
+
+# ------------------------------------------------------------------ markdown
+
+def nombre(x, d=2) -> str:
+    return '–' if x is None else f'{x:.{d}f}'.replace('.', ',')
+
+
+def pourcent(x) -> str:
+    """Écart (%) : 0 sous 0,001 %, 3 décimales sous 0,01 %, sinon 2."""
+    if x is None:
+        return '–'
+    if abs(x) < 1e-3:
+        return '0'
+    return f'{nombre(x, 3 if abs(x) < 0.01 else 2)} %'
+
+
+def avec_ecart(obj, e) -> str:
+    if obj is None:
+        return '–'
+    cell = f'{nombre(obj)} ({pourcent(e)})'
+    return f'**{cell}**' if abs(e) < 1e-3 else cell
+
+
+def temps(s) -> str:
+    return '–' if s is None else f'{s:.0f} s' if s >= 10 else f'{nombre(s, 1)} s'
+
+
+def gap(l) -> str:
+    if l['plne_gap'] is None:
+        return '–'
+    return '0 (optimal)' if l['plne_gap'] < 1e-6 else pourcent(l['plne_gap'])
+
+
+def moyenne(ls: list, cle: str) -> str:
+    """Moyenne des écarts disponibles ; précise sur combien d'instances si certaines manquent."""
+    v = [l[cle] for l in ls if l[cle] is not None]
+    if not v:
+        return '–'
+    return pourcent(statistics.mean(v)) + ('' if len(v) == len(ls) else f' ({len(v)}/{len(ls)})')
+
+
+def bloc(titre: str, ls: list) -> list:
+    md = [f'**{titre} ({len(ls)})**', '',
+          '| Instance | Référence | Glouton | Recuit : moyenne ± σ | Recuit : meilleur | PLNE | Borne PLNE '
+          '| Gap certifié | Temps glouton | Temps PLNE |',
+          '|---|---|---|---|---|---|---|---|---|---|']
+    for l in ls:
+        moy = '–' if l['recuit_moyenne'] is None else (
+            f'{nombre(l["recuit_moyenne"])} ± {nombre(l["recuit_ecart_type"])} ({pourcent(l["ecart_recuit_moyenne"])})')
+        md.append(f'| {l["instance"]} | {nombre(l["reference"])} '
+                  f'| {avec_ecart(l["glouton"], l["ecart_glouton"])} | {moy} '
+                  f'| {avec_ecart(l["recuit_meilleur"], l["ecart_recuit_meilleur"])} '
+                  f'| {avec_ecart(l["plne"], l["ecart_plne"])} | {nombre(l["plne_borne"])} | {gap(l)} '
+                  f'| {temps(l["temps_glouton"])} | {temps(l["temps_plne"])} |')
+    md.append(f'| **Moyenne** | | {moyenne(ls, "ecart_glouton")} | {moyenne(ls, "ecart_recuit_moyenne")} '
+              f'| {moyenne(ls, "ecart_recuit_meilleur")} | {moyenne(ls, "ecart_plne")} | '
+              f'| {moyenne(ls, "plne_gap")} | | |')
+    return md + ['']
+
+
+def markdown(ls: list) -> str:
+    test = [l for l in ls if not l['reglage']]
+    reglage = [l for l in ls if l['reglage']]
+    real = sum(l['recuit_realisables'] for l in ls)
+    graines = sum(l['recuit_graines'] for l in ls)
+    optimales = [l['instance'] for l in ls if l['plne_gap'] is not None and l['plne_gap'] < 1e-6]
+    md = ['<!-- Généré par python src/tableau.py : ne pas modifier à la main -->', '',
+          'Écart (%) à la référence (meilleure valeur de la qualification du challenge) entre parenthèses ; '
+          'en gras : référence atteinte (écart < 0,001 %). Gap certifié : (PLNE − borne) / PLNE, '
+          'calculé par Gurobi. Recuit et PLNE : `ComputationTime` du challenge (15 min).', '']
+    md += bloc('Instances hors réglage', test)
+    md += bloc('Instances de réglage du recuit', reglage)
+    md += [f'- Recuit : {real}/{graines} exécutions réalisables (checker officiel).',
+           f'- PLNE : optimum prouvé sur {len(optimales)} instance(s) ({", ".join(optimales) or "aucune"}).']
+    return '\n'.join(md) + '\n'
+
+
+def main():
+    ls = lignes()
+    with open(os.path.join(RESULTS_DIR, 'tableau.csv'), 'w', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=COLONNES)
+        w.writeheader()
+        w.writerows({k: '' if v is None else v for k, v in l.items()} for l in ls)
+    md = markdown(ls)
+    with open(os.path.join(RESULTS_DIR, 'tableau.md'), 'w') as f:
+        f.write(md)
+    print(md)
+
+
+if __name__ == '__main__':
+    main()
