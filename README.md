@@ -113,9 +113,18 @@ gratuite, fichier indiqué par `GRB_LICENSE_FILE`). La licence fournie par `pip 
 limitée à 2000 variables : dans ce cas, ou sans Gurobi, `make plne` s'arrête avec un message explicite.
 Le glouton et le recuit fonctionnent sans Gurobi.
 
-Les instances (`A_set/`, `B_set/`, ≈ 10 Go) ne sont pas versionnées : les télécharger depuis le
-[dépôt du challenge](https://github.com/rte-france/challenge-roadef-2020) et les placer à la racine
-(`A_set/A_01.json`, `B_set/B_set_rounded/B_01.json`, …).
+### Instances
+
+Les instances ne sont pas versionnées (≈ 10 Go une fois décompressées). Elles se téléchargent
+directement depuis le challenge ROADEF/EURO 2020 de RTE :
+
+- page officielle : [roadef.org — Instances and Checker](https://www.roadef.org/challenge/2020/en/instances.php) ;
+- archives directes : [`A_set.7z`](https://github.com/rte-france/challenge-roadef-2020/raw/master/A_set.7z) (16 Mo),
+  [`B_set.7z`](https://github.com/rte-france/challenge-roadef-2020/raw/master/B_set.7z) (87 Mo),
+  sur le [dépôt de RTE](https://github.com/rte-france/challenge-roadef-2020).
+
+Les décompresser à la racine du projet (`7z x A_set.7z`), pour obtenir `A_set/A_01.json`,
+`B_set/B_set_rounded/B_01.json`, etc.
 
 ## Résoudre une instance
 
