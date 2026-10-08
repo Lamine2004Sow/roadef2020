@@ -15,9 +15,9 @@ from campagne import INSTANCES_REGLAGE
 from logger import RESULTS_DIR, read_csv
 
 COLONNES = ['instance', 'reglage', 'reference', 'glouton', 'temps_glouton',
-            'recuit_moyenne', 'recuit_ecart_type', 'recuit_meilleur', 'recuit_realisables', 'recuit_graines',
+            'recuit_moyenne', 'recuit_ecart_type', 'recuit_meilleur', 'recuit_pire', 'recuit_realisables', 'recuit_graines',
             'plne', 'plne_borne', 'plne_gap', 'temps_plne',
-            'ecart_glouton', 'ecart_recuit_moyenne', 'ecart_recuit_meilleur', 'ecart_plne']
+            'ecart_glouton', 'ecart_recuit_moyenne', 'ecart_recuit_meilleur', 'ecart_recuit_pire', 'ecart_plne']
 
 
 def ecart(obj, ref):
@@ -44,12 +44,12 @@ def lignes() -> list:
              'temps_glouton': g['temps'] if g else None,
              'recuit_moyenne': statistics.mean(ok) if ok else None,
              'recuit_ecart_type': statistics.stdev(ok) if len(ok) > 1 else (0.0 if ok else None),
-             'recuit_meilleur': min(ok) if ok else None,
+             'recuit_meilleur': min(ok) if ok else None, 'recuit_pire': max(ok) if ok else None,
              'recuit_realisables': len(ok), 'recuit_graines': len(rec),
              'plne': p['objectif'] if p and p['realisable'] == 1 else None,
              'plne_borne': p['borne'] if p else None, 'plne_gap': 100 * p['gap'] if p else None,
              'temps_plne': p['temps'] if p else None}
-        for k in ('glouton', 'recuit_moyenne', 'recuit_meilleur', 'plne'):
+        for k in ('glouton', 'recuit_moyenne', 'recuit_meilleur', 'recuit_pire', 'plne'):
             l[f'ecart_{k}'] = ecart(l[k], ref[inst])
         out.append(l)
     return out

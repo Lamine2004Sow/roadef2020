@@ -1,7 +1,7 @@
 """Graphes du rapport (voir notes/rapport.md). Figures écrites dans results/figures/ (PNG et PDF).
 
 Usage :
-    python src/graphes.py                                  graphes 1 à 8 depuis results/
+    python src/graphes.py                                  graphes 1 à 8, 12a, 12b et 13 depuis results/
     python src/graphes.py <instance.json> <solution.txt>   + graphes 9 à 11 pour cette solution
 """
 import glob
@@ -17,6 +17,7 @@ from campagne import INSTANCES_REGLAGE
 from evaluation import Evaluation
 from logger import RESULTS_DIR, instance_name, read_csv
 from reader import read_instance, read_solution, duration
+from tableau import lignes
 
 FIG_DIR = os.path.join(RESULTS_DIR, 'figures')
 
@@ -244,6 +245,112 @@ def mouvements(fichiers: list):
     sauver(fig, '6_mouvements')
 
 
+# ------------------------------------------------- comparer selon la taille
+
+def tailles() -> dict:
+    return {r['instance']: r['taille'] for r in read_csv(os.path.join(RESULTS_DIR, 'instances.csv'))
+            if r.get('taille', '') != ''}
+
+
+def temps_taille(ls: list):
+    """Graphe 12a : temps du glouton et de la PLNE selon la taille (log-log) ;
+    le recuit s'arrête au budget du challenge, tracé comme une ligne."""
+    taille = tailles()
+    ls = [l for l in ls if l['instance'] in taille]
+    if not ls:
+        return
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    budget = 60 * 15
+    ax.axhline(budget, color=BASELINE, linewidth=1, zorder=1)
+    ax.annotate('budget du challenge (recuit, limite de la PLNE)', (1, budget), xycoords=('axes fraction', 'data'),
+                xytext=(0, 4), textcoords='offset points', ha='right', fontsize=8, color=MUTED)
+    g = [(taille[l['instance']], l['temps_glouton']) for l in ls if l['temps_glouton'] is not None]
+    ax.scatter(*zip(*g), s=56, color=couleur('glouton'), label='glouton', edgecolors=SURFACE, linewidths=1.5, zorder=3)
+    for optimal, marque, nom in ((True, 'o', 'PLNE : optimum prouvé'), (False, '^', 'PLNE : temps limite')):
+        pts = [(taille[l['instance']], l['temps_plne']) for l in ls
+               if l['temps_plne'] is not None and (l['plne_gap'] < 1e-6) == optimal]
+        if pts:
+            ax.scatter(*zip(*pts), s=56, marker=marque, color=couleur('plne'), label=nom,
+                       edgecolors=SURFACE, linewidths=1.5, zorder=3)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlabel('taille (valeurs de risque, échelle log)')
+    ax.set_ylabel('temps de calcul (s, échelle log)')
+    ax.set_title('Temps de calcul selon la taille')
+    ax.legend(loc='upper left')
+    sauver(fig, '12a_temps_taille')
+
+
+def ecart_taille(ls: list):
+    """Graphe 12b : écart à la référence selon la taille, au budget du challenge.
+    Recuit : moyenne des graines, trait de la meilleure à la pire. Marqueurs creux : instances de réglage."""
+    taille = tailles()
+    ls = [l for l in ls if l['instance'] in taille]
+    if not ls:
+        return
+    fig, ax = plt.subplots(figsize=(6.5, 4.2))
+    series = [('glouton', 'ecart_glouton', 0.88), ('recuit+descente', 'ecart_recuit_moyenne', 1.0),
+              ('plne', 'ecart_plne', 1.12)]  # décalage horizontal : points d'une même instance lisibles
+    for m, cle, dx in series:
+        for reglage in (False, True):
+            pts = [l for l in ls if l[cle] is not None and bool(l['reglage']) == reglage]
+            if not pts:
+                continue
+            x = [taille[l['instance']] * dx for l in pts]
+            y = [l[cle] for l in pts]
+            if m == 'recuit+descente':
+                ax.vlines(x, [l['ecart_recuit_meilleur'] for l in pts], [l['ecart_recuit_pire'] for l in pts], color=couleur(m), linewidth=1, alpha=0.6, zorder=2)
+            ax.scatter(x, y, s=48, color=SURFACE if reglage else couleur(m), edgecolors=couleur(m),
+                       linewidths=1.5, zorder=3, label=None if reglage else
+                       {'recuit+descente': 'recuit (moyenne ; trait : meilleure → pire graine)', 'plne': 'PLNE'}.get(m, m))
+    ax.scatter([], [], s=48, color=SURFACE, edgecolors=MUTED, linewidths=1.5, label='creux : instance de réglage')
+    ax.set_xscale('log')
+    ax.set_yscale('symlog', linthresh=0.1)
+    haut = max(l[c] for l in ls for c in ('ecart_glouton', 'ecart_recuit_pire', 'ecart_plne') if l[c] is not None)
+    ax.set_ylim(-0.01, 1.6 * haut)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:g}'))
+    ax.set_xlabel('taille (valeurs de risque, échelle log)')
+    ax.set_ylabel('écart à la référence (%, symlog)')
+    ax.set_title('Qualité selon la taille, au budget du challenge')
+    ax.legend(ncols=2, loc='upper left', bbox_to_anchor=(0, -0.16), fontsize=8)
+    sauver(fig, '12b_ecart_taille')
+
+
+def profil_performance(ls: list):
+    """Graphe 13 : profil de performance (Dolan-Moré) sur les instances hors réglage :
+    part des instances où chaque méthode est à moins de x % de la meilleure des méthodes comparées."""
+    ls = [l for l in ls if not l['reglage']]
+    series = [('glouton', 'glouton', '-'), ('recuit (moyenne)', 'recuit_moyenne', '-'),
+              ('recuit (meilleure graine)', 'recuit_meilleur', '--'), ('PLNE', 'plne', '-')]
+    couleurs = {'glouton': couleur('glouton'), 'recuit_moyenne': couleur('recuit+descente'),
+                'recuit_meilleur': couleur('recuit+descente'), 'plne': couleur('plne')}
+    ls = [l for l in ls if all(l[c] is not None for _, c, _ in series)]
+    if not ls:
+        return
+    n = len(ls)
+    ecarts = {c: sorted(max(0.0, ecart(l[c], min(l[k] for _, k, _ in series))) for l in ls) for _, c, _ in series}
+    x_max = 1.2 * max(max(e) for e in ecarts.values())
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    for nom, c, style in series:
+        e = [v if v > 1e-3 else 0.0 for v in ecarts[c]]  # sous 0,001 % : la meilleure
+        xs = [0.0] + e + [x_max]
+        ys = [sum(v <= x for v in e) / n for x in xs]
+        ax.step(xs, ys, where='post', color=couleurs[c], linestyle=style, label=nom)
+    ax.set_xscale('symlog', linthresh=0.01)
+    ax.set_xlim(0, x_max)
+    ax.set_ylim(0, 1.03)
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f'{v:g}'))
+    ax.yaxis.set_major_formatter(matplotlib.ticker.PercentFormatter(1.0))
+    ax.set_xlabel('écart à la meilleure des méthodes (%, symlog)')
+    ax.set_ylabel('part des instances')
+    ax.set_title(f'Profil de performance — {n} instances hors réglage')
+    # La PLNE part de la meilleure graine (MIP start) : elle ne peut pas faire moins bien
+    ax.annotate('PLNE partie de la meilleure graine du recuit', (1, 1), xycoords='axes fraction',
+                ha='right', va='bottom', fontsize=8, color=MUTED)
+    ax.legend(loc='lower right')
+    sauver(fig, '13_profil_performance')
+
+
 # -------------------------------------------------------- illustrer une solution
 
 def evaluation_solution(instance: dict, starts: dict) -> Evaluation:
@@ -331,6 +438,10 @@ def main():
                  'Critères de tri du glouton', cle='variante')
     barres_ecart([r for r in rows if r['methode'] in ('glouton', 'recuit', 'recuit+descente')],
                  '8_apport_etapes', 'Apport de chaque étape', ordre=['glouton', 'recuit', 'recuit+descente'])
+    ls = lignes()
+    temps_taille(ls)
+    ecart_taille(ls)
+    profil_performance(ls)
 
     if len(sys.argv) == 3:
         instance = read_instance(sys.argv[1])

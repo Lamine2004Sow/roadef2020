@@ -105,9 +105,20 @@ Les graphes 9 à 11 se calculent depuis une solution et `Evaluation` (tableaux `
 13. **Profil de performance (Dolan-Moré)** : pour chaque méthode, part des instances où elle est
     à moins de x % de la meilleure. Résume la comparaison finale en une figure. *Données : `results.csv`.*
 
-Taille d'une instance (colonne `taille` de `instances.csv`, à ajouter) :
-`Σᵢ Σₛ Δᵢ(s) × nombre moyen de scénarios`, à peu près le nombre de valeurs lues par `delta` ;
-le nombre d'interventions seul n'explique pas le temps (A_04 : 50 s).
+Taille d'une instance (colonne `taille` de `instances.csv`, `logger.taille`) : nombre de valeurs de
+risque `Σᵢ Σₛ Σ_{t où i est en cours} S_t` (≈ `Σᵢ Σₛ Δᵢ(s) × nombre moyen de scénarios`), de 2 577 (A_09)
+à 17,6 M (A_05) ; proche du nombre de non-zéros de la PLNE. Le nombre d'interventions seul n'explique
+pas le temps (A_04 : 85 s pour le glouton).
+
+Lecture (`results/figures/12a_temps_taille`, `12b_ecart_taille`, `13_profil_performance`) :
+- 12a : la PLNE prouve l'optimum en quelques secondes jusqu'à ≈ 1,5·10⁵ (et A_04, 1 scénario, en 112 s),
+  puis atteint le temps limite dès 2·10⁵ ; le glouton reste sous 10 s sauf A_04.
+- 12b : marqueurs creux = instances de réglage ; trait du recuit = meilleure → pire graine.
+  Les écarts du recuit et de la PLNE ne croissent pas avec la taille : ils dépendent surtout du nombre
+  de scénarios et des violations à réparer par le glouton (A_14, A_15).
+- 13 : sur les 12 instances hors réglage seulement. La PLNE est toujours la meilleure par construction
+  (elle part de la meilleure graine du recuit) ; la meilleure graine est à moins de 0,4 % de la meilleure
+  méthode partout, la moyenne des graines à moins de 0,9 %, le glouton jusqu'à 10 %.
 
 **Essentiel pour le rapport : 1, 2, 4, 7, 9 et 13.**
 
@@ -152,8 +163,8 @@ départ), métaheuristique meilleur compromis, PLNE référence exacte sur les p
 - [x] Brancher `Convergence` et `log_result` dans le recuit (méthodes `recuit` et `recuit+descente`, graines).
 - [x] Récupérer les meilleures solutions connues du challenge : `results/best_known.csv`
   (qualification, 15 min, [roadef.org](https://roadef.org/challenge/2020/en/qualifresult.php)).
-- [ ] Colonne `taille` dans `instances.csv` (+ recalcul des instances déjà enregistrées).
-- [ ] Graphes 12a, 12b (taille) et 13 (profil de performance).
+- [x] Colonne `taille` dans `instances.csv` (+ recalcul des instances déjà enregistrées).
+- [x] Graphes 12a, 12b (taille) et 13 (profil de performance), données de `src/tableau.py`.
 - [x] Colonnes PLNE dans `results.csv` : borne inférieure et gap.
 - [x] Campagne PLNE au temps du challenge (`python src/campagne.py plne`, voir `notes/plne.md`).
 - [x] Tableau principal : `results/tableau.md` et `.csv` (`make tableau`), instances de réglage à part.

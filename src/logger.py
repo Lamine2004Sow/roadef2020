@@ -14,7 +14,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_DIR = os.path.join(ROOT, 'results')
 
 INSTANCE_COLUMNS = ['instance', 'interventions', 'T', 'ressources', 'exclusions',
-                    'scenarios_min', 'scenarios_max', 'alpha', 'quantile', 'temps_limite']
+                    'scenarios_min', 'scenarios_max', 'alpha', 'quantile', 'temps_limite', 'taille']
 RESULT_COLUMNS = ['date', 'instance', 'methode', 'variante', 'graine',
                   'objectif', 'obj1', 'obj2', 'realisable', 'viol_ressources', 'viol_exclusions',
                   'temps', 'lam', 'a', 'b', 'c', 'T0', 'alpha', 'iterations', 'borne', 'gap']
@@ -76,12 +76,32 @@ def objectifs(ev) -> tuple:
     return float(means.mean()), float(np.maximum(q - means, 0.0).mean())
 
 
+def taille(instance: dict) -> int:
+    """Nombre de valeurs de risque de l'instance : Σ_i Σ_s Σ_{t où i est en cours} S_t,
+    soit à peu près Σ_i Σ_s Δ_i(s) × nombre moyen de scénarios."""
+    T, S = instance['T'], instance['Scenarios_number']
+    total = 0
+    for interv in instance['Interventions'].values():
+        for s in range(1, min(int(interv['tmax']), T) + 1):
+            total += sum(S[s - 1:min(s + int(interv['Delta'][s - 1]), T + 1) - 1])
+    return total
+
+
 def log_instance(instance: dict, instance_path: str, path: str = None):
-    """Ajoute la ligne de l'instance dans instances.csv si elle n'y est pas déjà."""
+    """Ajoute la ligne de l'instance dans instances.csv si elle n'y est pas déjà,
+    ou la complète si elle date d'avant l'ajout d'une colonne (taille)."""
     path = path or os.path.join(RESULTS_DIR, 'instances.csv')
     name = instance_name(instance_path)
-    if any(row['instance'] == name for row in read_csv(path)):
+    rows = read_csv(path)
+    if any(row['instance'] == name and row.get('taille', '') != '' for row in rows):
         return
+    if any(row['instance'] == name for row in rows):
+        with open(path, newline='') as f:
+            old = [r for r in csv.DictReader(f) if r['instance'] != name]
+        with open(path, 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=INSTANCE_COLUMNS)
+            writer.writeheader()
+            writer.writerows({k: r.get(k, '') for k in INSTANCE_COLUMNS} for r in old)
     _append(path, INSTANCE_COLUMNS, {
         'instance': name,
         'interventions': len(instance['Interventions']),
@@ -93,6 +113,7 @@ def log_instance(instance: dict, instance_path: str, path: str = None):
         'alpha': instance['Alpha'],
         'quantile': instance['Quantile'],
         'temps_limite': instance.get('ComputationTime', ''),
+        'taille': taille(instance),
     })
 
 
