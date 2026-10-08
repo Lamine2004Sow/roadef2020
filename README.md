@@ -13,13 +13,16 @@ Trois méthodes, évaluées sur les 15 instances A au temps du challenge (15 min
 2. **Recuit simulé + descente** : part du glouton ; déplacements (locaux ±5 ou globaux) et swaps
    de dates ; température calibrée sur l'objectif, refroidissement ajusté au temps limite.
 3. **PLNE** (Gurobi) : modèle exact, quantile linéarisé par big-M, départ depuis le meilleur recuit ;
-   option `--coupes` : coupes de quantile qui renforcent fortement la borne inférieure.
+   option `--coupes` : inégalités de sous-ensemble de Gouvine (inégalité (20) de
+   [arXiv:2111.01047](https://arxiv.org/abs/2111.01047)), séparées itérativement sur une relaxation
+   sans binaires puis à chaque nœud ; elles renforcent fortement la borne inférieure.
 
 ## Résultats
 
 Écart à la meilleure valeur de la qualification du challenge ([roadef.org](https://roadef.org/challenge/2020/en/qualifresult.php),
 `results/best_known.csv`). Recuit : 5 graines par instance, **75/75 exécutions réalisables** ;
-toutes les solutions sont validées par le checker officiel.
+toutes les solutions sont validées par le checker officiel. PLNE : 15 min en partant de la meilleure
+des 5 graines (sa solution ne correspond donc pas au budget du challenge ; sa borne, si).
 
 Les paramètres du recuit ont été réglés sur **A_06, A_09 et A_13** : ces trois instances sont
 présentées à part, et les conclusions portent sur les douze autres.
@@ -31,17 +34,18 @@ présentées à part, et les conclusions portent sur les douze autres.
 
 - Le recuit divise par plus de cinq l'écart du glouton ; la meilleure graine atteint la référence
   sur 6 instances et en est à moins de 0,1 % sur 5 autres.
-- Le réglage n'a pas avantagé ses propres instances (0,63 % contre 0,52 %).
+- Écarts du même ordre sur les instances de réglage (0,63 %) et hors réglage (0,52 %) ; la séparation
+  évite de juger le recuit sur ses instances de réglage, elle ne mesure pas un biais.
 - La PLNE **prouve l'optimum de 8 instances** (A_01, A_03, A_04, A_06, A_07, A_09, A_10, A_12),
   toutes égales à la référence ; elle améliore le meilleur recuit jusqu'à l'optimum sur A_01, A_04, A_06.
-- **Coupes de quantile** sur A_02 : gap certifié de **55,94 % → 1,32 %** (borne 2058 → 4610), et
+- **Inégalités de sous-ensemble** (`--coupes`) sur A_02 : gap certifié de **55,94 % → 1,32 %** (borne 2058 → 4610), et
   meilleure solution 4672,13 → 4671,94.
 
 <details>
 <summary>Détail par instance</summary>
 
 Écart à la référence (**0** : référence atteinte). σ : écart-type de l'objectif sur les 5 graines.
-† : borne obtenue avec `--coupes`.
+† : valeur obtenue avec `--coupes` (inégalités de sous-ensemble).
 
 **Instances hors réglage**
 
@@ -135,7 +139,7 @@ make plne            INSTANCE=A_set/A_01.json [DEPART=sol]  # -> solutions/A_01_
 ```
 
 Chaque commande écrit la solution puis la vérifie avec le checker officiel. Temps par défaut :
-`ComputationTime` de l'instance (15 min). PLNE avec coupes :
+`ComputationTime` de l'instance (15 min). PLNE avec les inégalités de sous-ensemble :
 `.venv/bin/python src/Plne.py A_set/A_02.json sol.txt --depart depart.txt --coupes`.
 
 ## Reproduire les résultats
@@ -165,5 +169,5 @@ Format d'une solution : une ligne `nom_intervention date_début` par interventio
 
 - Sujet, instances et checker : [rte-france/challenge-roadef-2020](https://github.com/rte-france/challenge-roadef-2020).
 - G. Gouvine, *Mixed-Integer Programming decomposition for stochastic programming with quantiles*,
-  [arXiv:2111.01047](https://arxiv.org/abs/2111.01047) (comparaison de la PLNE).
+  [arXiv:2111.01047](https://arxiv.org/abs/2111.01047) : inégalités de sous-ensemble et comparaison de la PLNE.
 - S. Kirkpatrick, C. D. Gelatt, M. P. Vecchi, *Optimization by Simulated Annealing*, Science, 1983.
