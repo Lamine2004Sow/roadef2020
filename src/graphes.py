@@ -125,7 +125,7 @@ def barres_ecart(rows: list, nom: str, titre: str, cle: str = 'methode', ordre: 
     sauver(fig, nom)
 
 
-def boites_graines(rows: list, methode: str = 'recuit'):
+def boites_graines(rows: list, methode: str = 'recuit+descente'):
     """Graphe 2 : dispersion de l'objectif sur plusieurs graines, par instance."""
     par_instance = {}
     for r in rows:
@@ -146,7 +146,7 @@ def boites_graines(rows: list, methode: str = 'recuit'):
     ax.set_ylabel('écart à la référence (%)')
     ax.set_title(f'Dispersion du {methode} sur plusieurs graines')
     ax.grid(axis='x', visible=False)
-    sauver(fig, f'2_dispersion_{methode}')
+    sauver(fig, f'2_dispersion_{methode.replace("+", "_")}')
 
 
 def qualite_temps(rows: list):
@@ -206,18 +206,21 @@ def temperature_acceptation(fichier: str):
 
 
 def mouvements(fichiers: list):
-    """Graphe 6 : part des déplacements et des swaps parmi les mouvements acceptés."""
-    noms, dep, swp = [], [], []
+    """Graphe 6 : part des déplacements et des swaps parmi les mouvements acceptés.
+    Une barre par instance et par variante : les graines sont cumulées."""
+    cumul = {}
     for f in fichiers:
         rows = read_csv(f)
         if rows:
-            total = rows[-1]['deplacements_acceptes'] + rows[-1]['swaps_acceptes']
-            if total:
-                noms.append(os.path.splitext(os.path.basename(f))[0])
-                dep.append(100 * rows[-1]['deplacements_acceptes'] / total)
-                swp.append(100 * rows[-1]['swaps_acceptes'] / total)
-    if not noms:
+            nom = os.path.splitext(os.path.basename(f))[0].rsplit('_s', 1)[0].replace('_recuit', '')
+            d, s = cumul.get(nom, (0, 0))
+            cumul[nom] = (d + rows[-1]['deplacements_acceptes'], s + rows[-1]['swaps_acceptes'])
+    cumul = {n: v for n, v in sorted(cumul.items()) if sum(v)}
+    if not cumul:
         return
+    noms = list(cumul)
+    dep = [100 * d / (d + s) for d, s in cumul.values()]
+    swp = [100 * s / (d + s) for d, s in cumul.values()]
     fig, ax = plt.subplots(figsize=(max(6, 0.7 * len(noms)), 4))
     x = np.arange(len(noms))
     ax.bar(x, dep, width=0.6, color=CATEGORICAL[0], label='déplacements', edgecolor=SURFACE, linewidth=1)
