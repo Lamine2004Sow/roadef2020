@@ -1,7 +1,8 @@
 """Tableau comparatif glouton / recuit / PLNE au temps du challenge (voir notes/rapport.md).
 
 Usage : python src/tableau.py
-Lit results/results.csv et results/best_known.csv ; écrit results/tableau.csv et results/tableau.md.
+Lit results/results.csv et results/best_known.csv ; écrit results/tableau.csv, results/tableau.md
+et results/tableau.tex (inclus dans rapport/main.tex).
 Une ligne par instance A, en deux blocs : instances hors réglage, puis instances de réglage du recuit.
     glouton : exécution la plus récente
     recuit  : recuit+descente de la campagne finale (graines, sans variante), moyenne ± écart-type et meilleure
@@ -144,6 +145,49 @@ def markdown(ls: list) -> str:
     return '\n'.join(md) + '\n'
 
 
+# --------------------------------------------------------------------- LaTeX
+
+def tex_cellule(obj, e) -> str:
+    """Valeur et écart à la référence sur deux lignes ; en gras si la référence est atteinte."""
+    if obj is None:
+        return '--'
+    val, ec = nombre(obj), pourcent(e).replace('%', r'\%')
+    if abs(e) < 1e-3:
+        val = rf'\textbf{{{val}}}'
+    return rf'\makecell{{{val}\\ \footnotesize({ec})}}'
+
+
+def tex_bloc(titre: str, ls: list) -> list:
+    tex = [rf'\multicolumn{{8}}{{l}}{{\textit{{{titre} ({len(ls)})}}}} \\', r'\midrule']
+    for l in ls:
+        moy = '--' if l['recuit_moyenne'] is None else (
+            rf'\makecell{{{nombre(l["recuit_moyenne"])} $\pm$ {nombre(l["recuit_ecart_type"])}\\ '
+            rf'\footnotesize({pourcent(l["ecart_recuit_moyenne"])})}}'.replace('%', r'\%'))
+        borne = nombre(l['plne_borne']) + (r'$^\dagger$' if l['plne_coupes'] else '')
+        tex.append(' & '.join([l['instance'].replace('_', r'\_'), nombre(l['reference']),
+                               tex_cellule(l['glouton'], l['ecart_glouton']), moy,
+                               tex_cellule(l['recuit_meilleur'], l['ecart_recuit_meilleur']),
+                               tex_cellule(l['plne'], l['ecart_plne']), borne,
+                               gap(l).replace('%', r'\%')]) + r' \\')
+    tex.append(' & '.join([r'\textbf{Moyenne}', '', moyenne(ls, 'ecart_glouton'), moyenne(ls, 'ecart_recuit_moyenne'),
+                           moyenne(ls, 'ecart_recuit_meilleur'), moyenne(ls, 'ecart_plne'), '',
+                           moyenne(ls, 'plne_gap')]).replace('%', r'\%') + r' \\')
+    return tex
+
+
+def latex(ls: list) -> str:
+    """Corps du tableau (tabular) ; légende et environnement table dans le rapport."""
+    tex = ['% Généré par python src/tableau.py : ne pas modifier à la main',
+           r'\begin{tabular}{lrrrrrrr}', r'\toprule',
+           r'Instance & Référence & Glouton & \makecell{Recuit\\ moy. $\pm$ $\sigma$} & \makecell{Recuit\\ meilleur} '
+           r'& PLNE & \makecell{Borne\\ PLNE} & \makecell{Gap\\ certifié} \\', r'\midrule']
+    tex += tex_bloc('Instances hors réglage', [l for l in ls if not l['reglage']])
+    tex += [r'\midrule']
+    tex += tex_bloc('Instances de réglage du recuit', [l for l in ls if l['reglage']])
+    tex += [r'\bottomrule', r'\end{tabular}']
+    return '\n'.join(tex) + '\n'
+
+
 def main():
     ls = lignes()
     with open(os.path.join(RESULTS_DIR, 'tableau.csv'), 'w', newline='') as f:
@@ -153,6 +197,8 @@ def main():
     md = markdown(ls)
     with open(os.path.join(RESULTS_DIR, 'tableau.md'), 'w') as f:
         f.write(md)
+    with open(os.path.join(RESULTS_DIR, 'tableau.tex'), 'w') as f:
+        f.write(latex(ls))
     print(md)
 
 

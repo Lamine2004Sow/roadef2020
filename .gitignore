@@ -234,3 +234,12 @@ results/reglage/*
 !results/reglage/synthese.csv
 # Contexte de session de l assistant (non versionné)
 CONTEXT.md
+# Compilation LaTeX du rapport
+rapport/*.aux
+rapport/*.log
+rapport/*.out
+rapport/*.toc
+rapport/*.fls
+rapport/*.fdb_latexmk
+rapport/*.synctex.gz
+rapport/main.pdf
